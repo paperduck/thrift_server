@@ -12,8 +12,6 @@ import java.time.LocalDate
 import scala.Enumeration
 
 
-
-
 @Singleton
 //class CalculatorController @Inject()(personService: PersonService)//PersonService is here just to demonstrate how to use service in controller
 class CalculatorController @Inject()(dayService: DayService)
@@ -23,7 +21,7 @@ class CalculatorController @Inject()(dayService: DayService)
   override val addDay = handle(AddDay) { args: AddDay.Args =>
     var ret = false
     info(s"Adding day...")
-    val newDay = Day(date = LocalDate.ofEpochDay(args.d), isHoliday = true, isBusinessDay = false)
+    val newDay = Day(exchangeId=1, date=LocalDate.ofEpochDay(args.d), isHoliday=true, isBusinessDay=false)
     val queryResult = dayService.insertDays(List(newDay))
     info(s"Finished adding day.")
     Future.value(ret)
@@ -32,7 +30,12 @@ class CalculatorController @Inject()(dayService: DayService)
   override val getHolidays = handle(GetHolidays) { args: GetHolidays.Args =>
     var ret = false
     info(s"Getting holidays...")
-    val queryResult = dayService.getHolidays()
+    var paramExchangeId = 1
+    var paramToDate = LocalDate.ofEpochDay(1)
+    var paramFromDate = LocalDate.ofEpochDay(1)
+    val queryResult = dayService.getHolidays(paramExchangeId, paramToDate, paramFromDate)
+    info(s"result: $queryResult")
+    info(s"Finished getting holidays.")
     Future.value(ret)
   }
 
