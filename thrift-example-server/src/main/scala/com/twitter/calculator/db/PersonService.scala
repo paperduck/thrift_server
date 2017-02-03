@@ -1,7 +1,6 @@
 package com.twitter.calculator.db
 
 import javax.inject.{Inject, Singleton}
-
 import io.getquill.{FinagleMysqlContext, Literal}
 
 trait PersonSchema {

@@ -7,11 +7,10 @@ include "finatra-thrift/finatra_thrift_exceptions.thrift"
 service Calculator {
 
   /**
-   * Insert a day into the calendar.
-   * Day is assumed to be days since Epoch.
+   * Returns true if a day is a holiday.
    */
-  bool AddDay(
-    1: i32 d
+  bool isHoliday(
+    2: i32 epochDays
   ) throws (
     1: finatra_thrift_exceptions.ServerError serverError,
     2: finatra_thrift_exceptions.UnknownClientIdError unknownClientIdError
@@ -19,10 +18,25 @@ service Calculator {
   )
 
   /**
-   *
+   * Insert a day into the calendar.
+   * Day is assumed to be days since Epoch.
    */
-  bool GetHolidays(
-    1: string exchange
+  bool AddDay(
+    1: i32 exchangeId
+    2: i32 date
+    3: bool isHoliday
+    4: bool isBusinessDay
+  ) throws (
+    1: finatra_thrift_exceptions.ServerError serverError,
+    2: finatra_thrift_exceptions.UnknownClientIdError unknownClientIdError
+    3: finatra_thrift_exceptions.NoClientIdError noClientIdError
+  )
+
+  /**
+   * Get holidays of an exchange between two dates.
+   */
+  list<map<i32,bool>> GetHolidays(
+    1: string exchangeName
     2: i32 fromDate
     3: i32 toDate
   ) throws (

@@ -1,14 +1,19 @@
 package com.twitter.calculator.db
 
+import java.time.{LocalDate}
+import java.util.Date
 import javax.inject.{Inject, Singleton}
+
+import io.getquill.context.Context
+import io.getquill.context.sql.SqlContext
 import io.getquill.{FinagleMysqlContext, Literal}
-import java.time.LocalDate
 
 
 sealed trait Exchange {
   def value: String
   def int: Int
 }
+
 
 object Exchange {
   case object JPX       extends Exchange {val value = "JPX";        val int = 0}
@@ -28,33 +33,58 @@ object Exchange {
   }
 }
 
-trait DaySchema {
-  val ctx: FinagleMysqlContext[Literal]
+/*
+//encoding logic which can be mixed in with different database contexts
+trait LocalDateEncoder { this: Context[_, _] =>
+  implicit val encodeLocalDate = MappedEncoding[LocalDate, String](date => date.toString())
+  implicit val decodeLocalDate = MappedEncoding[String, LocalDate](str => LocalDate.parse(str))
 
-  import ctx._
-
-  def insertDays_(days: List[Day]) = quote {liftQuery(days).foreach(d => query[Day].insert(d))}
-  def getHolidays_(exchangeId: Int, toDate: LocalDate, fromDate: LocalDate) = quote{
-    query[Day].filter(d => d.isHoliday == true)
-      .filter(d => d.exchangeId == exchangeId)
-      .filter(d => d.date >= fromDate)
-      .filter(d => d.date <= toDate)
-      .map(d => d.date)
+  implicit class ForLocalDate(ldt: LocalDate) {
+    def > = quote((arg: LocalDate) => infix"$ldt > $arg".as[Boolean])
+    def >= = quote((arg: LocalDate) => infix"$ldt >= $arg".as[Boolean])
+    def < = quote((arg: LocalDate) => infix"$ldt < $arg".as[Boolean])
+    def <= = quote((arg: LocalDate) => infix"$ldt <= $arg".as[Boolean])
+    def == = quote((arg: LocalDate) => infix"$ldt = $arg".as[Boolean])
   }
+  def now = quote(infix"now()".as[LocalDate])
 }
+*/
+
 
 @Singleton
-class DayService @Inject()(override val ctx: FinagleMysqlContext[Literal]) extends DaySchema {
-
+class DayService @Inject()(val ctx: FinagleMysqlContext[Literal]){
   import ctx._
+  implicit val encodeLocalDate = MappedEncoding[LocalDate, String](_.toString())
+  implicit val decodeLocalDate = MappedEncoding[String, LocalDate](LocalDate.parse(_))
+
+  implicit class ForLocalDate(ldt: LocalDate) {
+    def > = quote((arg: LocalDate) => infix"$ldt > $arg".as[Boolean])
+    def >= = quote((arg: LocalDate) => infix"$ldt >= $arg".as[Boolean])
+    def < = quote((arg: LocalDate) => infix"$ldt < $arg".as[Boolean])
+    def <= = quote((arg: LocalDate) => infix"$ldt <= $arg".as[Boolean])
+    def == = quote((arg: LocalDate) => infix"$ldt = $arg".as[Boolean])
+  }
+  def now = quote(infix"now()".as[LocalDate])
 
   implicit val encodeExchange = MappedEncoding[Exchange, Int](_.int)
   implicit val decodeExchange = MappedEncoding[Int, Exchange](Exchange.fromInt)
 
-  def insertDays(days: List[Day]) = run(insertDays_(days))
-  def getHolidays(exchange: Exchange, toDate: LocalDate, fromDate: LocalDate) = run(getHolidays_(exchange.int, toDate, fromDate))
-
+  def isHoliday(date: LocalDate) = {
+    val queryResult = ctx.run(query[Day].filter(d => d.date == lift(date)))
+    queryResult
+  }
+  def insertDays(days: List[Day]) = ctx.run(liftQuery(days).foreach(d => query[Day].insert(d)))
+  def getHolidays(exchangeName: String, toDate: Int, fromDate: Int) = ctx.run(
+      query[Day]
+        .filter(d =>
+          d.exchangeId == lift(Exchange.fromString(exchangeName).int) &&
+            d.isHoliday &&
+            (d.date > lift(LocalDate.ofEpochDay(fromDate)) || d.date == lift(LocalDate.ofEpochDay(fromDate))) &&
+            (d.date < lift(LocalDate.ofEpochDay(toDate)) || d.date == lift(LocalDate.ofEpochDay(toDate)))
+        )
+  )
+  //def findDay = ctx.run(query[Day])
   def findDay = ctx.run(query[Day])
+  //def deleteDays = ctx.run(query[Day].delete)
   def deleteDays = ctx.run(query[Day].delete)
-
 }
