@@ -4,13 +4,28 @@ namespace rb Calculator
 
 include "finatra-thrift/finatra_thrift_exceptions.thrift"
 
+typedef string LocalDate
+
+enum Exchange {
+    JPX         = 0,
+    Japannext   = 1,
+    NASDAQ      = 2
+}
+
+struct Day {
+  1:Exchange exchange,
+  2:LocalDate date,
+  3:bool isHoliday,
+  4:bool isBusinessDay
+}
+
 service Calculator {
 
   /**
    * Returns true if a day is a holiday.
    */
   bool isHoliday(
-    2: i32 epochDays
+    2: LocalDate date
   ) throws (
     1: finatra_thrift_exceptions.ServerError serverError,
     2: finatra_thrift_exceptions.UnknownClientIdError unknownClientIdError
@@ -21,9 +36,9 @@ service Calculator {
    * Insert a day into the calendar.
    * Day is assumed to be days since Epoch.
    */
-  bool AddDay(
-    1: i32 exchangeId
-    2: i32 date
+  bool InsertDay(
+    1: Exchange exchange
+    2: LocalDate date
     3: bool isHoliday
     4: bool isBusinessDay
   ) throws (
@@ -34,11 +49,12 @@ service Calculator {
 
   /**
    * Get holidays of an exchange between two dates.
+   * Return example: [ map(exchangeId, date), map(isHoliday, isBusinessDay) ]
    */
-  list<map<i32,bool>> GetHolidays(
-    1: string exchangeName
-    2: i32 fromDate
-    3: i32 toDate
+  list<string> GetHolidays(
+    1: Exchange exchange
+    2: string fromDate
+    3: string toDate
   ) throws (
     1: finatra_thrift_exceptions.ServerError serverError,
     2: finatra_thrift_exceptions.UnknownClientIdError unknownClientIdError
