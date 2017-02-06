@@ -25,8 +25,8 @@ class CalculatorServerFeatureTest extends FeatureTest {
 
   "IsHoliday" should {
     "return true then false" in{
-      var res = Await.result(client.)
-      res = Await.result(client.insertDay(thriftscala.Exchange.Jpx,"2017-01-01",true,false))
+      val delRes = Await.result(client.deleteAll())
+      var res = Await.result(client.insertDay(thriftscala.Exchange.Jpx,"2017-01-01",true,false))
       var holidayRes = Await.result(client.isHoliday("2017-01-01"))
       holidayRes should equal(true)
       res = Await.result(client.insertDay(thriftscala.Exchange.Nasdaq, "2017-01-02",false,true))

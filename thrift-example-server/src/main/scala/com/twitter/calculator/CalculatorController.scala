@@ -10,16 +10,9 @@ import com.twitter.calculator.db._
 //import com.twitter.calculator.db.PersonService
 
 //import scala.concurrent.duration._
-//import scala.Enumeration
-//import scala.collection.mutable.HashMap
-import scala.collection.mutable.MutableList
-//import scala.collection.mutable.Map
-import scala.collection.JavaConverters._
-import scala.collection.immutable.Map
 
 import javax.inject.{Inject, Singleton}
 import java.time.LocalDate
-import java.util.{HashMap}
 import java.time.format.DateTimeFormatter
 
 
@@ -97,6 +90,10 @@ class CalculatorController @Inject()(dayService: DayService)
 
   override val countDays = handle(CountDays) { args: CountDays.Args =>
     dayService.countDays
+  }
+
+  override val deleteAll = handle(DeleteAll) { args: DeleteAll.Args =>
+    dayService.deleteAll
   }
 
   /**************************************************************************************/

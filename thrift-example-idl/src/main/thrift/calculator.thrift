@@ -74,8 +74,15 @@ service Calculator {
     /*
     *
     */
-    delete
+    i64 deleteAll(
+    ) throws (
+        1: finatra_thrift_exceptions.ServerError serverError,
+        2: finatra_thrift_exceptions.UnknownClientIdError unknownClientIdError
+        3: finatra_thrift_exceptions.NoClientIdError noClientIdError
+    )
+
   /************************************************************************/
+
   /**
    * Increment a number
    */
