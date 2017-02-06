@@ -23,6 +23,35 @@ import java.util.{HashMap}
 import java.time.format.DateTimeFormatter
 
 
+sealed trait Exchange {
+  def value: String
+  def int: Int
+}
+
+object Exchange {
+  case object JPX       extends Exchange {val value = "JPX";        val int = 0}
+  case object Japannext extends Exchange {val value = "Japannext";  val int = 1}
+  case object NASDAQ    extends Exchange {val value = "NASDAQ";     val int = 2}
+
+  def fromString(value: String): Exchange = value match{
+    case Exchange.JPX.value       => Exchange.JPX
+    case Exchange.Japannext.value => Exchange.Japannext
+    case Exchange.NASDAQ.value    => Exchange.NASDAQ
+  }
+
+  def fromInt(value: Int): Exchange = value match{
+    case Exchange.JPX.int       => Exchange.JPX
+    case Exchange.Japannext.int => Exchange.Japannext
+    case Exchange.NASDAQ.int    => Exchange.NASDAQ
+  }
+
+  // convert from thrift's enum to Scala's enum
+  def fromThriftExchangeToDb(value: thriftscala.Exchange): Int = value match{
+    case thriftscala.Exchange.Jpx       => Exchange.JPX.int
+    case thriftscala.Exchange.Japannext => Exchange.Japannext.int
+    case thriftscala.Exchange.Nasdaq    => Exchange.NASDAQ.int
+  }
+}
 
 @Singleton
 //class CalculatorController @Inject()(personService: PersonService)//PersonService is here just to demonstrate how to use service in controller
@@ -35,14 +64,23 @@ class CalculatorController @Inject()(dayService: DayService)
 
   override val isHoliday = handle(IsHoliday) { args: IsHoliday.Args =>
     val queryResult = dayService.isHoliday(args.date)
-    val result = queryResult.map {r => r(0).isHoliday} // not invoked until the integer value becomes available
+    // not invoked until the integer value becomes available
+    val result = queryResult.map {r => {
+      if (r.length > 0) {
+        r.head
+      }
+      else
+      {
+        false
+      }
+    }}
     result
   }
 
   override val insertDay = handle(InsertDay) { args: InsertDay.Args =>
     var success = true
     info(s"Adding day...")
-    val newDay = Day(exchangeId=args.exchange.asInstanceOf[Int], date=parseDate(args.date),
+    val newDay = Day(exchange=Exchange.fromThriftExchangeToDb(args.exchange), date=parseDate(args.date),
       isHoliday=args.isHoliday, isBusinessDay=args.isBusinessDay)
     val queryResult = dayService.insertDays(List(newDay))
     Future.value(success)
@@ -51,7 +89,7 @@ class CalculatorController @Inject()(dayService: DayService)
 
   override val getHolidays = handle(GetHolidays) { args: GetHolidays.Args =>
     info(s"Getting holidays...")
-    val queryResult = dayService.getHolidays(args.exchange.asInstanceOf[Int], args.fromDate, args.toDate)
+    val queryResult = dayService.getHolidays(Exchange.fromThriftExchangeToDb(args.exchange), args.fromDate, args.toDate)
     //queryResult.map {r => r(0)}  // extract from Future
     // date comes from db as date; convert to string
     queryResult.map{row => row.map(elem => serializeDate(elem))}

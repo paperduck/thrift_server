@@ -1,10 +1,11 @@
 package com.twitter.calculator.db
 
-import java.time.{LocalDate}
+import java.time.LocalDate
 import java.util.Date
 import javax.inject.{Inject, Singleton}
 import java.time.format.DateTimeFormatter
 
+import com.twitter.calculator.{Exchange, thriftscala}
 import io.getquill.context.Context
 import io.getquill.context.sql.SqlContext
 import io.getquill.{FinagleMysqlContext, Literal}
@@ -45,46 +46,27 @@ class DayService @Inject()(val ctx: FinagleMysqlContext[Literal]){
   def serializeDate(ld: LocalDate): String = ld.format(DateTimeFormatter.ISO_LOCAL_DATE)
   def parseDate(ldStr: String): LocalDate = LocalDate.parse(ldStr, DateTimeFormatter.ISO_LOCAL_DATE)
 
-  sealed trait Exchange {
-    def value: String
-    def int: Int
-  }
-
-  object Exchange {
-    case object JPX       extends Exchange {val value = "JPX";        val int = 0}
-    case object Japannext extends Exchange {val value = "Japannext";  val int = 1}
-    case object NASDAQ    extends Exchange {val value = "NASDAQ";     val int = 2}
-
-    def fromString(value: String): Exchange = value match{
-      case Exchange.JPX.value       => Exchange.JPX
-      case Exchange.Japannext.value => Exchange.Japannext
-      case Exchange.NASDAQ.value    => Exchange.NASDAQ
-    }
-
-    def fromInt(value: Int): Exchange = value match{
-      case Exchange.JPX.int       => Exchange.JPX
-      case Exchange.Japannext.int => Exchange.Japannext
-      case Exchange.NASDAQ.int    => Exchange.NASDAQ
-    }
-  }
-
   implicit val encodeExchange = MappedEncoding[Exchange, Int](_.int)
   implicit val decodeExchange = MappedEncoding[Int, Exchange](Exchange.fromInt)
 
   def isHoliday(date: String) = {
-    val queryResult = ctx.run(query[Day].filter(d => d.date == lift(parseDate(date))))
+    val queryResult = ctx.run(
+      query[Day]
+        .filter(d => d.date == lift(parseDate(date)))
+        .map(d => d.isHoliday)
+    )
     queryResult
   }
   def insertDays(days: List[Day]) = ctx.run(liftQuery(days).foreach(d => query[Day].insert(d)))
-  def getHolidays(exchange: Int, toDate: String, fromDate: String) = ctx.run(
+  def getHolidays(exchange: Int, fromDate: String, toDate: String) = ctx.run(
       query[Day]
         .filter(d =>
-          d.exchangeId == lift(exchange) &&
+          d.exchange == lift(exchange) &&
             d.isHoliday &&
             (d.date > lift(parseDate(fromDate)) || d.date == lift(parseDate(fromDate))) &&
             (d.date < lift(parseDate(toDate)) || d.date == lift(parseDate(toDate)))
         )
-      .map(d => d.date)
+        .map(d => d.date)
   )
   //def findDay = ctx.run(query[Day])
   def findDay = ctx.run(query[Day])
