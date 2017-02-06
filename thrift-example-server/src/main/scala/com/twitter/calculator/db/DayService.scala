@@ -41,11 +41,10 @@ class DayService @Inject()(val ctx: FinagleMysqlContext[Literal]){
     def == = quote((arg: LocalDate) => infix"$ldt = $arg".as[Boolean])
     //def toEpoch = quote(infix"DATEDIFF($ldt,'1970-01-01')".as[Long])
   }
-  def now = quote(infix"now()".as[LocalDate])
 
+  def now = quote(infix"now()".as[LocalDate])
   def serializeDate(ld: LocalDate): String = ld.format(DateTimeFormatter.ISO_LOCAL_DATE)
   def parseDate(ldStr: String): LocalDate = LocalDate.parse(ldStr, DateTimeFormatter.ISO_LOCAL_DATE)
-
   implicit val encodeExchange = MappedEncoding[Exchange, Int](_.int)
   implicit val decodeExchange = MappedEncoding[Int, Exchange](Exchange.fromInt)
 
@@ -69,7 +68,12 @@ class DayService @Inject()(val ctx: FinagleMysqlContext[Literal]){
         .map(d => d.date)
   )
   //def findDay = ctx.run(query[Day])
-  def findDay = ctx.run(query[Day])
-  //def deleteDays = ctx.run(query[Day].delete)
+  def everything = ctx.run(query[Day])
   def deleteDays = ctx.run(query[Day].delete)
+  def countDays = {
+    val r = quote {
+      query[Day].map(d => d.exchange)
+    }
+    ctx.run(r.size)
+  }
 }

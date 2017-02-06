@@ -95,6 +95,12 @@ class CalculatorController @Inject()(dayService: DayService)
     queryResult.map{row => row.map(elem => serializeDate(elem))}
   }
 
+  override val countDays = handle(CountDays) { args: CountDays.Args =>
+    dayService.countDays
+  }
+
+  /**************************************************************************************/
+
   override val addNumbers = handle(AddNumbers) { args: AddNumbers.Args =>
     info(s"Adding numbers $args.a + $args.b")
     Future.value(args.a + args.b)
