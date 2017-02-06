@@ -6,25 +6,25 @@ include "finatra-thrift/finatra_thrift_exceptions.thrift"
 
 typedef string LocalDate
 
-enum Exchange {
+enum CalendarEnum {
     JPX         = 0,
     Japannext   = 1,
     NASDAQ      = 2
 }
 
 struct Day {
-  1:Exchange exchange,
+  1:CalendarEnum calendar,
   2:LocalDate date,
   3:bool isHoliday,
-  4:bool isBusinessDay
 }
 
-service Calculator {
+service Calendar {
 
   /**
    * Returns true if a day is a holiday.
    */
   bool isHoliday(
+    1: CalendarEnum calendar
     2: LocalDate date
   ) throws (
     1: finatra_thrift_exceptions.ServerError serverError,
@@ -34,10 +34,9 @@ service Calculator {
 
     /**
     * Insert a day into the calendar.
-    * Day is assumed to be days since Epoch.
     */
     bool InsertDay(
-        1: Exchange exchange
+        1: CalendarEnum calendar
         2: LocalDate date
         3: bool isHoliday
         4: bool isBusinessDay
@@ -48,11 +47,10 @@ service Calculator {
     )
 
     /**
-    * Get holidays of an exchange between two dates.
-    * Return example: [ map(exchangeId, date), map(isHoliday, isBusinessDay) ]
+    * Get holidays of a given calendar between two dates.
     */
     list<string> GetHolidays(
-        1: Exchange exchange
+        1: CalendarEnum calendar
         2: string fromDate
         3: string toDate
     ) throws (

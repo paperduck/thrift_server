@@ -5,7 +5,7 @@ import java.util.Date
 import javax.inject.{Inject, Singleton}
 import java.time.format.DateTimeFormatter
 
-import com.twitter.calculator.{Exchange, thriftscala}
+import com.twitter.calculator.{CalendarEnum, thriftscala}
 import io.getquill.context.Context
 import io.getquill.context.sql.SqlContext
 import io.getquill.{FinagleMysqlContext, Literal}
@@ -45,22 +45,25 @@ class DayService @Inject()(val ctx: FinagleMysqlContext[Literal]){
   def now = quote(infix"now()".as[LocalDate])
   def serializeDate(ld: LocalDate): String = ld.format(DateTimeFormatter.ISO_LOCAL_DATE)
   def parseDate(ldStr: String): LocalDate = LocalDate.parse(ldStr, DateTimeFormatter.ISO_LOCAL_DATE)
-  implicit val encodeExchange = MappedEncoding[Exchange, Int](_.int)
-  implicit val decodeExchange = MappedEncoding[Int, Exchange](Exchange.fromInt)
+  implicit val encodeCalendarEnum = MappedEncoding[CalendarEnum, Int](_.int)
+  implicit val decodeCalendarEnum = MappedEncoding[Int, CalendarEnum](CalendarEnum.fromInt)
 
-  def isHoliday(date: String) = {
+  def isHoliday(calendar: Int, date: String) = {
     val queryResult = ctx.run(
       query[Day]
-        .filter(d => d.date == lift(parseDate(date)))
+        .filter(d =>
+          d.calendar == lift(calendar) &&
+          d.date == lift(parseDate(date))
+        )
         .map(d => d.isHoliday)
     )
     queryResult
   }
   def insertDays(days: List[Day]) = ctx.run(liftQuery(days).foreach(d => query[Day].insert(d)))
-  def getHolidays(exchange: Int, fromDate: String, toDate: String) = ctx.run(
+  def getHolidays(calendar: Int, fromDate: String, toDate: String) = ctx.run(
       query[Day]
         .filter(d =>
-          d.exchange == lift(exchange) &&
+          d.calendar == lift(calendar) &&
             d.isHoliday &&
             (d.date > lift(parseDate(fromDate)) || d.date == lift(parseDate(fromDate))) &&
             (d.date < lift(parseDate(toDate)) || d.date == lift(parseDate(toDate)))
@@ -72,7 +75,7 @@ class DayService @Inject()(val ctx: FinagleMysqlContext[Literal]){
   def deleteAll = ctx.run(query[Day].delete)
   def countDays = {
     val r = quote {
-      query[Day].map(d => d.exchange)
+      query[Day].map(d => d.calendar)
     }
     ctx.run(r.size)
   }

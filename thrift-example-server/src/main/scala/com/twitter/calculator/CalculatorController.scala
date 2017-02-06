@@ -1,8 +1,8 @@
 package com.twitter.calculator
 
 
-import com.twitter.calculator.thriftscala.Calculator
-import com.twitter.calculator.thriftscala.Calculator._
+import com.twitter.calculator.thriftscala.Calendar
+import com.twitter.calculator.thriftscala.Calendar._
 import com.twitter.finatra.thrift.Controller
 import com.twitter.util.Future
 import com.twitter.calculator.db._
@@ -16,33 +16,33 @@ import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 
 
-sealed trait Exchange {
+sealed trait CalendarEnum {
   def value: String
   def int: Int
 }
 
-object Exchange {
-  case object JPX       extends Exchange {val value = "JPX";        val int = 0}
-  case object Japannext extends Exchange {val value = "Japannext";  val int = 1}
-  case object NASDAQ    extends Exchange {val value = "NASDAQ";     val int = 2}
+object CalendarEnum {
+  case object JPX       extends CalendarEnum {val value = "JPX";        val int = 0}
+  case object Japannext extends CalendarEnum {val value = "Japannext";  val int = 1}
+  case object NASDAQ    extends CalendarEnum {val value = "NASDAQ";     val int = 2}
 
-  def fromString(value: String): Exchange = value match{
-    case Exchange.JPX.value       => Exchange.JPX
-    case Exchange.Japannext.value => Exchange.Japannext
-    case Exchange.NASDAQ.value    => Exchange.NASDAQ
+  def fromString(value: String): CalendarEnum = value match{
+    case CalendarEnum.JPX.value       => CalendarEnum.JPX
+    case CalendarEnum.Japannext.value => CalendarEnum.Japannext
+    case CalendarEnum.NASDAQ.value    => CalendarEnum.NASDAQ
   }
 
-  def fromInt(value: Int): Exchange = value match{
-    case Exchange.JPX.int       => Exchange.JPX
-    case Exchange.Japannext.int => Exchange.Japannext
-    case Exchange.NASDAQ.int    => Exchange.NASDAQ
+  def fromInt(value: Int): CalendarEnum = value match{
+    case CalendarEnum.JPX.int       => CalendarEnum.JPX
+    case CalendarEnum.Japannext.int => CalendarEnum.Japannext
+    case CalendarEnum.NASDAQ.int    => CalendarEnum.NASDAQ
   }
 
   // convert from thrift's enum to Scala's enum
-  def fromThriftExchangeToDb(value: thriftscala.Exchange): Int = value match{
-    case thriftscala.Exchange.Jpx       => Exchange.JPX.int
-    case thriftscala.Exchange.Japannext => Exchange.Japannext.int
-    case thriftscala.Exchange.Nasdaq    => Exchange.NASDAQ.int
+  def fromThriftCalendarToDb(value: thriftscala.CalendarEnum): Int = value match{
+    case thriftscala.CalendarEnum.Jpx       => CalendarEnum.JPX.int
+    case thriftscala.CalendarEnum.Japannext => CalendarEnum.Japannext.int
+    case thriftscala.CalendarEnum.Nasdaq    => CalendarEnum.NASDAQ.int
   }
 }
 
@@ -50,13 +50,13 @@ object Exchange {
 //class CalculatorController @Inject()(personService: PersonService)//PersonService is here just to demonstrate how to use service in controller
 class CalculatorController @Inject()(dayService: DayService)
   extends Controller
-  with Calculator.BaseServiceIface {
+  with Calendar.BaseServiceIface {
 
   def serializeDate(ld: LocalDate): String = ld.format(DateTimeFormatter.ISO_LOCAL_DATE)
   def parseDate(ldStr: String): LocalDate = LocalDate.parse(ldStr, DateTimeFormatter.ISO_LOCAL_DATE)
 
   override val isHoliday = handle(IsHoliday) { args: IsHoliday.Args =>
-    val queryResult = dayService.isHoliday(args.date)
+    val queryResult = dayService.isHoliday(CalendarEnum.fromThriftCalendarToDb(args.calendar), args.date)
     // not invoked until the integer value becomes available
     val result = queryResult.map {r => {
       if (r.length > 0) {
@@ -73,8 +73,8 @@ class CalculatorController @Inject()(dayService: DayService)
   override val insertDay = handle(InsertDay) { args: InsertDay.Args =>
     var success = true
     info(s"Adding day...")
-    val newDay = Day(exchange=Exchange.fromThriftExchangeToDb(args.exchange), date=parseDate(args.date),
-      isHoliday=args.isHoliday, isBusinessDay=args.isBusinessDay)
+    val newDay = Day(calendar=CalendarEnum.fromThriftCalendarToDb(args.calendar), date=parseDate(args.date),
+      isHoliday=args.isHoliday)
     val queryResult = dayService.insertDays(List(newDay))
     Future.value(success)
     //queryResult.map({x => info("Finished"); x})
@@ -82,7 +82,7 @@ class CalculatorController @Inject()(dayService: DayService)
 
   override val getHolidays = handle(GetHolidays) { args: GetHolidays.Args =>
     info(s"Getting holidays...")
-    val queryResult = dayService.getHolidays(Exchange.fromThriftExchangeToDb(args.exchange), args.fromDate, args.toDate)
+    val queryResult = dayService.getHolidays(CalendarEnum.fromThriftCalendarToDb(args.calendar), args.fromDate, args.toDate)
     //queryResult.map {r => r(0)}  // extract from Future
     // date comes from db as date; convert to string
     queryResult.map{row => row.map(elem => serializeDate(elem))}
