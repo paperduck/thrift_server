@@ -2,13 +2,15 @@ package com.twitter.calculator
 
 import javax.inject.Inject
 
-import com.twitter.calculator.db.{DayService, Person}
+import com.twitter.calculator.db.{DayService, Person, Day}
 import com.twitter.finagle.http.Request
 import com.twitter.finatra.http.Controller
 import com.twitter.finatra.response.Mustache
 
 @Mustache("person")
 case class PersonView(person: Person)
+@Mustache("day")
+case class DayView(day: Day)
 
 class CalendarAdminHttpController @Inject()(
   dayService: DayService
