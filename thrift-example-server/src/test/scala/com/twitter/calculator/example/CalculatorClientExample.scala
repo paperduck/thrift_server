@@ -37,10 +37,11 @@ object CalculatorClientExample extends App {
 
   // isHoliday
   println("Calling isHoliday")
-  res = Await.result(client.isHoliday(CalendarEnum.Japannext, "2017-01-02"))
+  res = Await.result(client.isHoliday(CalendarEnum.Japannext, "2017-01-01"))
+  
+  println(s"  2017-01-01 is a holiday?  $res")
+  res = Await.result(client.isHoliday(CalendarEnum.Nasdaq, "2017-01-02"))
   println(s"  2017-01-02 is a holiday?  $res")
-  res = Await.result(client.isHoliday(CalendarEnum.Nasdaq, "2017-01-03"))
-  println(s"  2017-01-03 is a holiday?  $res")
 
   // getHolidays
   println("Calling getHolidays")

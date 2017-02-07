@@ -48,8 +48,7 @@ class DayService @Inject()(val ctx: FinagleMysqlContext[Literal]){
   implicit val encodeCalendarEnum = MappedEncoding[CalendarEnum, Int](_.int)
   implicit val decodeCalendarEnum = MappedEncoding[Int, CalendarEnum](CalendarEnum.fromInt)
 
-  def isHoliday(calendar: Int, date: String) = {
-    val queryResult = ctx.run(
+  def isHoliday(calendar: Int, date: String) = ctx.run(
       query[Day]
         .filter(d =>
           d.calendar == lift(calendar) &&
@@ -57,8 +56,6 @@ class DayService @Inject()(val ctx: FinagleMysqlContext[Literal]){
         )
         .map(d => d.isHoliday)
     )
-    queryResult
-  }
   def insertDays(days: List[Day]) = ctx.run(liftQuery(days).foreach(d => query[Day].insert(d)))
   def getHolidays(calendar: Int, fromDate: String, toDate: String) = ctx.run(
       query[Day]

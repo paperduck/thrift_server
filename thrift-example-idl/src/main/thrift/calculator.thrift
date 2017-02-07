@@ -20,17 +20,27 @@ struct Day {
 
 service Calendar {
 
-  /**
-   * Returns true if a day is a holiday.
-   */
-  bool isHoliday(
-    1: CalendarEnum calendar
-    2: LocalDate date
-  ) throws (
-    1: finatra_thrift_exceptions.ServerError serverError,
-    2: finatra_thrift_exceptions.UnknownClientIdError unknownClientIdError
-    3: finatra_thrift_exceptions.NoClientIdError noClientIdError
-  )
+    /*
+    */
+    bool isTodayBusinessDay(
+        1: CalendarEnum calendar
+    ) throws (
+        1: finatra_thrift_exceptions.ServerError serverError,
+        2: finatra_thrift_exceptions.UnknownClientIdError unknownClientIdError
+        3: finatra_thrift_exceptions.NoClientIdError noClientIdError
+    )
+
+    /**
+    * Returns true if a day is a holiday.
+    */
+    bool isHoliday(
+        1: CalendarEnum calendar
+        2: LocalDate date
+    ) throws  (
+        1: finatra_thrift_exceptions.ServerError serverError,
+        2: finatra_thrift_exceptions.UnknownClientIdError unknownClientIdError
+        3: finatra_thrift_exceptions.NoClientIdError noClientIdError
+    )
 
     /**
     * Insert a day into the calendar.

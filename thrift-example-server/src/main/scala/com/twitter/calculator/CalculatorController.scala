@@ -1,6 +1,9 @@
 package com.twitter.calculator
 
 
+import java.time.DayOfWeek
+import java.util.Date
+
 import com.twitter.calculator.thriftscala.Calendar
 import com.twitter.calculator.thriftscala.Calendar._
 import com.twitter.finatra.thrift.Controller
@@ -10,10 +13,14 @@ import com.twitter.calculator.db._
 //import com.twitter.calculator.db.PersonService
 
 //import scala.concurrent.duration._
+//import scala.concurrent.ExecutionContext.Implicits.global
+import scala.util.{Success, Failure}
+//import scala.concurrent.Future
 
 import javax.inject.{Inject, Singleton}
-import java.time.LocalDate
+import java.time.{LocalDate, ZoneOffset}
 import java.time.format.DateTimeFormatter
+import java.util.Calendar
 
 
 sealed trait CalendarEnum {
@@ -50,24 +57,40 @@ object CalendarEnum {
 //class CalculatorController @Inject()(personService: PersonService)//PersonService is here just to demonstrate how to use service in controller
 class CalculatorController @Inject()(dayService: DayService)
   extends Controller
-  with Calendar.BaseServiceIface {
+  with thriftscala.Calendar.BaseServiceIface {
 
   def serializeDate(ld: LocalDate): String = ld.format(DateTimeFormatter.ISO_LOCAL_DATE)
   def parseDate(ldStr: String): LocalDate = LocalDate.parse(ldStr, DateTimeFormatter.ISO_LOCAL_DATE)
 
+
+  override val isTodayBusinessDay = handle(IsTodayBusinessDay) { args: IsTodayBusinessDay.Args =>
+    //Date today = Calendar.getInstance().getTime()
+    val today = LocalDate.now(ZoneOffset.UTC)
+    val queryResult = dayService.isHoliday(CalendarEnum.fromThriftCalendarToDb(args.calendar), serializeDate(today))
+    val isBusDay = queryResult.map{r => {
+      if (r.nonEmpty) !r.head else throw new Exception
+    }}
+    isBusDay.onSuccess { res: Boolean =>
+      Future.value(!res)
+    }
+  }
+
+  // Return true if the day is marked as holiday in db OR is a weekend
   override val isHoliday = handle(IsHoliday) { args: IsHoliday.Args =>
     val queryResult = dayService.isHoliday(CalendarEnum.fromThriftCalendarToDb(args.calendar), args.date)
-    // not invoked until the integer value becomes available
-    val result = queryResult.map {r => {
-      if (r.length > 0) {
-        r.head
-      }
-      else
-      {
-        false
-      }
+    val isWeekend = List(DayOfWeek.SATURDAY, DayOfWeek.SUNDAY).contains(parseDate(args.date).getDayOfWeek())
+    val markedAsHoliday = queryResult.map {r => {
+      if (r.nonEmpty) r.head else throw new Exception //false
     }}
-    result
+    markedAsHoliday.onSuccess { holidayResult: Boolean =>
+      isWeekend || holidayResult
+    }
+    /*
+    markedAsHoliday.onFailure{ t: Throwable =>
+     println("An error has occurred: " + t.getMessage)
+      throw new Exception
+    }
+    */
   }
 
   override val insertDay = handle(InsertDay) { args: InsertDay.Args =>
