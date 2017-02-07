@@ -2,6 +2,7 @@
 ### Scala template
 *.class
 *.log
+logs/
 
 .idea/
 # sbt specific

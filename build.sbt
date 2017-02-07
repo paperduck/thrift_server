@@ -49,10 +49,12 @@ lazy val thriftExampleServer = (project in file("thrift-example-server")).
     moduleName := "thrift-example-server",
     libraryDependencies ++= Seq(
       "com.twitter" %% "finatra-thrift" % versions.finatra,
+      "com.twitter" %% "finatra-http" % versions.finatra,
       "ch.qos.logback" % "logback-classic" % versions.logback,
       "io.getquill" %% "quill-finagle-mysql" % versions.quill,
 
       "com.twitter" %% "finatra-thrift" % versions.finatra % "test",
+      "com.twitter" %% "finatra-http" % versions.finatra % "test",
       "com.twitter" %% "inject-app" % versions.finatra % "test",
       "com.twitter" %% "inject-core" % versions.finatra % "test",
       "com.twitter" %% "inject-modules" % versions.finatra % "test",
@@ -60,11 +62,13 @@ lazy val thriftExampleServer = (project in file("thrift-example-server")).
       "com.google.inject.extensions" % "guice-testlib" % versions.guice % "test",
 
       "com.twitter" %% "finatra-thrift" % versions.finatra % "test" classifier "tests",
+      "com.twitter" %% "finatra-http" % versions.finatra % "test" classifier "tests",
       "com.twitter" %% "inject-app" % versions.finatra % "test" classifier "tests",
       "com.twitter" %% "inject-core" % versions.finatra % "test" classifier "tests",
       "com.twitter" %% "inject-modules" % versions.finatra % "test" classifier "tests",
       "com.twitter" %% "inject-server" % versions.finatra % "test" classifier "tests"
-    )
+    ),
+    unmanagedResourceDirectories in Compile += baseDirectory.value / "src" / "main" / "webapp" //for static web resources
   ).
   dependsOn(thriftExampleIdl)
 

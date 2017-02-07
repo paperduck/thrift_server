@@ -4,14 +4,16 @@ import java.time.format.DateTimeFormatter
 import java.time.{LocalDate, ZoneOffset}
 
 import com.twitter.calculator.thriftscala.Calendar
-import com.twitter.finatra.thrift.EmbeddedThriftServer
+import com.twitter.finagle.http.Status
+import com.twitter.finatra.http.EmbeddedHttpServer
+import com.twitter.finatra.thrift.ThriftClient
 import com.twitter.finatra.thrift.thriftscala.{NoClientIdError, UnknownClientIdError}
 import com.twitter.inject.server.FeatureTest
 import com.twitter.util.{Await, Future}
 
 class CalculatorServerFeatureTest extends FeatureTest {
 
-  override val server = new EmbeddedThriftServer(new CalculatorServer)
+  override val server = new EmbeddedHttpServer(new CalculatorServer) with ThriftClient
 
   val client = server.thriftClient[Calendar[Future]](clientId = "client123")
 
@@ -95,6 +97,18 @@ class CalculatorServerFeatureTest extends FeatureTest {
     "be blocked with NoClientIdException" in {
       val clientWithoutId = server.thriftClient[Calendar[Future]]()
       intercept[NoClientIdError] { clientWithoutId.increment(1).value }
+    }
+  }
+
+  "http route" should {
+    "/ping" in {
+      server.httpGet("/ping", andExpect = Status.Ok, withBody = "pong")
+    }
+    "/" in {
+      server.httpGet("/", andExpect = Status.Ok)
+    }
+    "/person" in {
+      server.httpGet("/person", andExpect = Status.Ok)
     }
   }
 }

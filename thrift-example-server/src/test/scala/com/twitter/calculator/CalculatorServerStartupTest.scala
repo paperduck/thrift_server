@@ -1,14 +1,15 @@
 package com.twitter.calculator
 
 import com.google.inject.Stage
-import com.twitter.finatra.thrift.EmbeddedThriftServer
+import com.twitter.finatra.http.EmbeddedHttpServer
+import com.twitter.finatra.thrift.ThriftClient
 import com.twitter.inject.server.FeatureTest
 
 class CalculatorServerStartupTest extends FeatureTest {
 
-  val server = new EmbeddedThriftServer(
+  val server = new EmbeddedHttpServer(
     twitterServer = new CalculatorServer,
-    stage = Stage.PRODUCTION)
+    stage = Stage.PRODUCTION) with ThriftClient
 
   "server" should {
     "startup" in {
