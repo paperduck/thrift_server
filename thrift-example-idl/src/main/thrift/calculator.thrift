@@ -49,7 +49,6 @@ service Calendar {
         1: CalendarEnum calendar
         2: LocalDate date
         3: bool isHoliday
-        4: bool isBusinessDay
     ) throws (
         1: finatra_thrift_exceptions.ServerError serverError,
         2: finatra_thrift_exceptions.UnknownClientIdError unknownClientIdError

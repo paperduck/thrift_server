@@ -68,11 +68,9 @@ class CalculatorController @Inject()(dayService: DayService)
     val today = LocalDate.now(ZoneOffset.UTC)
     val queryResult = dayService.isHoliday(CalendarEnum.fromThriftCalendarToDb(args.calendar), serializeDate(today))
     val isBusDay = queryResult.map{r => {
-      if (r.nonEmpty) !r.head else throw new Exception
+      if (r.nonEmpty) r.head else false // empty set should throw exception
     }}
-    isBusDay.onSuccess { res: Boolean =>
-      Future.value(!res)
-    }
+    isBusDay
   }
 
   // Return true if the day is marked as holiday in db OR is a weekend
@@ -80,17 +78,9 @@ class CalculatorController @Inject()(dayService: DayService)
     val queryResult = dayService.isHoliday(CalendarEnum.fromThriftCalendarToDb(args.calendar), args.date)
     val isWeekend = List(DayOfWeek.SATURDAY, DayOfWeek.SUNDAY).contains(parseDate(args.date).getDayOfWeek())
     val markedAsHoliday = queryResult.map {r => {
-      if (r.nonEmpty) r.head else throw new Exception //false
+      if (r.nonEmpty) r.head else false // empty set should throw exception
     }}
-    markedAsHoliday.onSuccess { holidayResult: Boolean =>
-      isWeekend || holidayResult
-    }
-    /*
-    markedAsHoliday.onFailure{ t: Throwable =>
-     println("An error has occurred: " + t.getMessage)
-      throw new Exception
-    }
-    */
+    markedAsHoliday
   }
 
   override val insertDay = handle(InsertDay) { args: InsertDay.Args =>

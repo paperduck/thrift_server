@@ -1,6 +1,6 @@
 package com.twitter.calculator
 
-import com.twitter.calculator.thriftscala.{Calculator}
+import com.twitter.calculator.thriftscala.{Calendar}
 import com.twitter.finatra.thrift.EmbeddedThriftServer
 import com.twitter.finatra.thrift.thriftscala.{NoClientIdError, UnknownClientIdError}
 import com.twitter.inject.server.FeatureTest
@@ -10,14 +10,14 @@ class CalculatorServerFeatureTest extends FeatureTest {
 
   override val server = new EmbeddedThriftServer(new CalculatorServer)
 
-  val client = server.thriftClient[Calculator[Future]](clientId = "client123")
+  val client = server.thriftClient[Calendar[Future]](clientId = "client123")
 
   // delete should delete all rows
 
   "InsertDay" should {
     "increase table's record count by one" in {
       val initialCount = Await.result(client.countDays())
-      val res = Await.result(client.insertDay(thriftscala.Exchange.Jpx,"2017-01-01",false,false))
+      val res = Await.result(client.insertDay(thriftscala.CalendarEnum.Jpx,"2017-01-01",false))
       val secondCount = Await.result(client.countDays())
       secondCount should equal(initialCount + 1)
     }
@@ -26,11 +26,13 @@ class CalculatorServerFeatureTest extends FeatureTest {
   "IsHoliday" should {
     "return true then false" in{
       Await.result(client.deleteAll())
-      var res = Await.result(client.insertDay(thriftscala.Exchange.Jpx,"2017-01-01",true,false))
-      var holidayRes = Await.result(client.isHoliday("2017-01-01"))
+
+      Await.result(client.insertDay(thriftscala.CalendarEnum.Jpx, "2017-01-01", true))
+      var holidayRes = Await.result(client.isHoliday(thriftscala.CalendarEnum.Jpx, "2017-01-01"))
       holidayRes should equal(true)
-      res = Await.result(client.insertDay(thriftscala.Exchange.Nasdaq, "2017-01-02",false,true))
-      holidayRes = Await.result(client.isHoliday("2017-01-02"))
+
+      Await.result(client.insertDay(thriftscala.CalendarEnum.Nasdaq, "2017-01-02", false))
+      holidayRes = Await.result(client.isHoliday(thriftscala.CalendarEnum.Nasdaq, "2017-01-02"))
       holidayRes should equal(false)
     }
   }
@@ -45,14 +47,14 @@ class CalculatorServerFeatureTest extends FeatureTest {
 
   "blacklist clients" should {
     "be blocked with UnknownClientIdException" in {
-      val clientWithUnknownId = server.thriftClient[Calculator[Future]](clientId = "unlisted-client")
+      val clientWithUnknownId = server.thriftClient[Calendar[Future]](clientId = "unlisted-client")
       intercept[UnknownClientIdError] { clientWithUnknownId.increment(2).value }
     }
   }
 
   "clients without a client-id" should {
     "be blocked with NoClientIdException" in {
-      val clientWithoutId = server.thriftClient[Calculator[Future]]()
+      val clientWithoutId = server.thriftClient[Calendar[Future]]()
       intercept[NoClientIdError] { clientWithoutId.increment(1).value }
     }
   }
