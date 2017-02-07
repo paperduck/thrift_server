@@ -47,6 +47,8 @@ object CalculatorClientExample extends App {
   Await.result(client.insertDay(CalendarEnum.Jpx, "2017-02-05", false))
   res = Await.result(client.isHoliday(CalendarEnum.Nasdaq, "2017-02-05"))
   println(s"  2017-02-05 is a holiday?  $res")
+  res = Await.result(client.isHoliday(CalendarEnum.Nasdaq, "2017-02-26"))
+  println(s"  2017-02-26 is a holiday?  $res")
 
   // getHolidays
   println("Calling getHolidays")
@@ -60,6 +62,14 @@ object CalculatorClientExample extends App {
       println(s"  -> $h")
     }
   }
+
+  // isBusinessDay
+  println("Calling isBusinessDay")
+  Await.result(client.deleteAll())
+  var isBus = Await.result(client.isBusinessDay(CalendarEnum.Nasdaq, "2017-02-26"))
+  println(s"Is (2017-02-26)(SUN) a business day? $isBus")
+  isBus = Await.result(client.isBusinessDay(CalendarEnum.Nasdaq, "2017-02-27"))
+  println(s"Is (2017-02-27)(MON) a business day? $isBus")
 
   // getNextBusinessDay
   println("Calling getNextBusinessDay")

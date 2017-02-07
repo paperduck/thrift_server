@@ -48,6 +48,17 @@ class DayService @Inject()(val ctx: FinagleMysqlContext[Literal]){
   implicit val encodeCalendarEnum = MappedEncoding[CalendarEnum, Int](_.int)
   implicit val decodeCalendarEnum = MappedEncoding[Int, CalendarEnum](CalendarEnum.fromInt)
 
+  // Doesn't take weekends into consideration.
+  def isBusinessDay(calendar: Int, date: String) = ctx.run(
+    query[Day]
+      .filter(d =>
+        d.calendar == lift(calendar) &&
+          d.date == lift(parseDate(date))
+      )
+      .map(d => !d.isHoliday)
+  )
+
+  // Doesn't take weekends into consideration.
   def isHoliday(calendar: Int, date: String) = ctx.run(
       query[Day]
         .filter(d =>
