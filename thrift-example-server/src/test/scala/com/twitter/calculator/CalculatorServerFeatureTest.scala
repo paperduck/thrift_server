@@ -93,5 +93,8 @@ class CalculatorServerFeatureTest extends FeatureTest {
     "/" in {
       server.httpGet("/", andExpect = Status.Ok)
     }
+    "/person" in {
+      server.httpGet("/person", andExpect = Status.Ok)
+    }
   }
 }
