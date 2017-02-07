@@ -67,7 +67,8 @@ lazy val thriftExampleServer = (project in file("thrift-example-server")).
       "com.twitter" %% "inject-core" % versions.finatra % "test" classifier "tests",
       "com.twitter" %% "inject-modules" % versions.finatra % "test" classifier "tests",
       "com.twitter" %% "inject-server" % versions.finatra % "test" classifier "tests"
-    )
+    ),
+    unmanagedResourceDirectories in Compile += baseDirectory.value / "src" / "main" / "webapp" //for static web resources
   ).
   dependsOn(thriftExampleIdl)
 

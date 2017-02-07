@@ -12,6 +12,7 @@ import com.twitter.finatra.thrift
 import com.twitter.finatra.thrift.filters.{AccessLoggingFilter, ClientIdWhitelistFilter, StatsFilter, ThriftMDCFilter}
 import com.twitter.finatra.thrift.modules.ClientIdWhitelistModule
 
+//To refresh static html/template files without restarting the server, add '-local.doc.root=thrift-example-server/src/main/webapp' to Program arguments in Intellij's Run Configuration
 object CalculatorServerMain extends CalculatorServer
 
 class CalculatorServer extends HttpServer with ThriftServer {

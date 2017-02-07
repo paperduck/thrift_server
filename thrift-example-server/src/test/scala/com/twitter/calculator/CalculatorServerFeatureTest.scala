@@ -86,9 +86,12 @@ class CalculatorServerFeatureTest extends FeatureTest {
     }
   }
 
-  "http" should {
-    "ping" in {
+  "http route" should {
+    "/ping" in {
       server.httpGet("/ping", andExpect = Status.Ok, withBody = "pong")
+    }
+    "/" in {
+      server.httpGet("/", andExpect = Status.Ok)
     }
   }
 }
