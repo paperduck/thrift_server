@@ -7,15 +7,10 @@ import java.util.Date
 import com.twitter.calculator.thriftscala.Calendar
 import com.twitter.calculator.thriftscala.Calendar._
 import com.twitter.finatra.thrift.Controller
-import com.twitter.util.Future
+import com.twitter.util.{Await, Future}
 import com.twitter.calculator.db._
 
 //import com.twitter.calculator.db.PersonService
-
-//import scala.concurrent.duration._
-//import scala.concurrent.ExecutionContext.Implicits.global
-import scala.util.{Success, Failure}
-//import scala.concurrent.Future
 
 import javax.inject.{Inject, Singleton}
 import java.time.{LocalDate, ZoneOffset}
@@ -62,6 +57,32 @@ class CalculatorController @Inject()(dayService: DayService)
   def serializeDate(ld: LocalDate): String = ld.format(DateTimeFormatter.ISO_LOCAL_DATE)
   def parseDate(ldStr: String): LocalDate = LocalDate.parse(ldStr, DateTimeFormatter.ISO_LOCAL_DATE)
 
+
+
+  // Since holidays are the inverse of business days, return the next non-holiday
+  override val getNextBusinessDay = handle(GetNextBusinessDay) { args: GetNextBusinessDay.Args =>
+    Future.value(getNextBusinessDayRecursive(args.calendar, args.startDate, 100))
+  }
+
+  def getNextBusinessDayRecursive (calendar: thriftscala.CalendarEnum, dateKey: String, limit: Int): String = {
+    info("1")
+    if (limit == 0) throw new Exception
+    info("2")
+    val isHol = Await.result(dayService.isHoliday(CalendarEnum.fromThriftCalendarToDb(calendar), dateKey))
+    info("3")
+    if (isHol.isEmpty) {
+      info("isHol.isEmpty == true")
+      throw new Exception
+    }
+    info("4")
+    if (!isHol(0)){
+      info("5")
+      dateKey
+    }else{
+      info("6")
+      getNextBusinessDayRecursive(calendar, serializeDate(parseDate(dateKey).plusDays(1)), limit - 1)
+    }
+  }
 
   override val isTodayBusinessDay = handle(IsTodayBusinessDay) { args: IsTodayBusinessDay.Args =>
     //Date today = Calendar.getInstance().getTime()

@@ -62,6 +62,20 @@ class CalculatorServerFeatureTest extends FeatureTest {
     }
   }
 
+  "GetNextBusinessDay" should {
+    "return a date that is a business day" in {
+      Await.result(client.deleteAll())
+      Await.result(client.insertDay(thriftscala.CalendarEnum.Jpx, "2017-02-03", true))
+      Await.result(client.insertDay(thriftscala.CalendarEnum.Jpx, "2017-02-04", false))
+      Await.result(client.insertDay(thriftscala.CalendarEnum.Jpx, "2017-02-05", true))
+      Await.result(client.insertDay(thriftscala.CalendarEnum.Jpx, "2017-02-06", true))
+      Await.result(client.insertDay(thriftscala.CalendarEnum.Jpx, "2017-02-07", false))
+      Await.result(client.insertDay(thriftscala.CalendarEnum.Jpx, "2017-02-08", true))
+      val result = Await.result(client.getNextBusinessDay(thriftscala.CalendarEnum.Jpx, "2017-02-03"))
+      result should equal ("2017-02-07")
+    }
+  }
+
   "whitelist clients" should {
     "be allowed" in {
       client.increment(1).value should equal(2)
