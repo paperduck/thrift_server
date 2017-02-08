@@ -1,21 +1,39 @@
 package com.twitter.calculator
 
+import java.time.LocalDate
+import java.time.format.DateTimeFormatter
 import javax.inject.Inject
 
 import com.twitter.calculator.db.{Day, DayService, Person}
 import com.twitter.finagle.http.Request
 import com.twitter.finatra.http.Controller
 import com.twitter.finatra.response.Mustache
+import com.twitter.finatra.request.{FormParam, QueryParam}
 import com.twitter.util.Await
 
 @Mustache("person")
 case class PersonView(person: Person)
-@Mustache("calendar")
-case class DayView(days: List[Day])
+@Mustache("insert")
+case class DayView(
+  days: List[Day]
+)
+@Mustache("insertResult")
+case class DayInsertRequest(
+  @FormParam insertCalendar: Int,
+  @FormParam insertDate: String,
+  @FormParam insertIsHoliday: Boolean
+)
+@Mustache("delete")
+case class DeleteView(
+  days: List[Day]
+)
 
 class CalendarAdminHttpController @Inject()(
   dayService: DayService
 ) extends Controller {
+
+  def serializeDate(ld: LocalDate): String = ld.format(DateTimeFormatter.ISO_LOCAL_DATE)
+  def parseDate(ldStr: String): LocalDate = LocalDate.parse(ldStr, DateTimeFormatter.ISO_LOCAL_DATE)
 
   get("/ping") { request: Request =>
     "pong"
@@ -25,8 +43,22 @@ class CalendarAdminHttpController @Inject()(
     PersonView(Person(1, "Alice"))
   }
 
-  get("/calendar") { request: Request =>
+  get("/insert") { request: Request =>
     DayView(Await.result(dayService.allDays))
+  }
+
+  post("/insertResult") { request: DayInsertRequest =>
+    val dayList = List(Day(request.insertCalendar, parseDate(request.insertDate), request.insertIsHoliday))
+    Await.result(dayService.insertDays(dayList))
+    DayView(Await.result(dayService.allDays))
+  }
+
+  get("/delete") { request: Request =>
+    DayView(Await.result(dayService.allDays))
+  }
+
+  get("/deleteResult") { request: Request =>
+    request
   }
 
   /**
@@ -44,6 +76,6 @@ class CalendarAdminHttpController @Inject()(
   get("/:*") { request: Request =>
     response.ok.fileOrIndex(
       filePath = request.params("*"),
-      indexPath = "index.html")
+      indexPath = "calendar.html")
   }
 }
