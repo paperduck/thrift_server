@@ -1,0 +1,26 @@
+<html>
+<body>
+
+<table border=1>
+    <tr><td colspan=3>Days:</td></tr>
+    <tr><td>calendar</td><td>date</td><td>isHoliday</td></tr>
+    {{#days}}
+    <tr><td>{{calendar}}</td><td>{{date}}</td><td>{{isHoliday}}</td></tr>
+    {{/days}}
+</table>
+
+<form action="calendar" method="get">
+    <fieldset>
+        <legend><b>Insert Day</b></legend>
+            Calendar:<br/>
+            <input type="text" name="insertCalendar"><br/>
+            Date:<br/>
+            <input type="text" name="insertDate"><br/>
+            Is Holiday:<br/>
+            <input type="text" name="insertIsHoliday"><br/>
+            <input type="submit" name="insert">
+    </fieldset>
+</form>
+
+</body>
+</html>

@@ -78,7 +78,7 @@ class DayService @Inject()(val ctx: FinagleMysqlContext[Literal]){
         )
         .map(d => d.date)
   )
-  //def findDay = ctx.run(query[Day])
+  def allDays = ctx.run(query[Day])
   def everything = ctx.run(query[Day])
   def deleteAll = ctx.run(query[Day].delete)
   def countDays = {
