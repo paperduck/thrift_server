@@ -78,6 +78,21 @@ class CalculatorServerFeatureTest extends FeatureTest {
     }
   }
 
+  "DeleteOne" should {
+    "reduce the count by one" in {
+      Await.result(client.deleteAll())
+      Await.result(client.insertDay(thriftscala.CalendarEnum.Japannext, "2017-02-03", true))
+      Await.result(client.insertDay(thriftscala.CalendarEnum.Japannext, "2017-02-04", false))
+      Await.result(client.insertDay(thriftscala.CalendarEnum.Japannext, "2017-02-05", true))
+      Await.result(client.insertDay(thriftscala.CalendarEnum.Japannext, "2017-02-06", true))
+      Await.result(client.insertDay(thriftscala.CalendarEnum.Japannext, "2017-02-07", false))
+      val initialCount = Await.result(client.countDays())
+      Await.result(client.deleteOne(thriftscala.CalendarEnum.Japannext, "2017-02-06"))
+      val secondCount = Await.result(client.countDays())
+      initialCount should equal(secondCount + 1)
+    }
+  }
+
   "whitelist clients" should {
     "be allowed" in {
       client.increment(1).value should equal(2)

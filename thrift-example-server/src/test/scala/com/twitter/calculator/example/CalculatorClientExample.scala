@@ -24,8 +24,8 @@ object CalculatorClientExample extends App {
   val res = Await.result(client.addNumbers(1, 2))
   println("Result is " + res)
   */
-
   // addDay
+  Await.result(client.deleteAll())
   println("Calling insertDay on remote thrift server: " + remoteServer + "...")
   var res = Await.result(client.insertDay(CalendarEnum.Jpx, "2017-01-01", false))
   println(s"  2017-01-01")
@@ -35,6 +35,16 @@ object CalculatorClientExample extends App {
   println(s"  2017-01-03")
   res = Await.result(client.insertDay(CalendarEnum.Jpx, "2017-01-04", true))
   println(s"  2017-01-04")
+  println("")
+
+  // deleteOne(calendar, date)
+  println("Calling deleteOne(calendar, date)")
+  var dayCount = Await.result(client.countDays())
+  println(s"There are $dayCount days. Deleting day (2017-01-01) from calendar JPX.")
+  Await.result(client.deleteOne(CalendarEnum.Jpx, "2017-01-01"))
+  dayCount = Await.result(client.countDays())
+  println(s"There are $dayCount days.")
+  println("")
 
   // isHoliday
   println("Calling isHoliday")
@@ -49,6 +59,7 @@ object CalculatorClientExample extends App {
   println(s"  2017-02-05 is a holiday?  $res")
   res = Await.result(client.isHoliday(CalendarEnum.Nasdaq, "2017-02-26"))
   println(s"  2017-02-26 is a holiday?  $res")
+  println("")
 
   // getHolidays
   println("Calling getHolidays")
@@ -62,6 +73,7 @@ object CalculatorClientExample extends App {
       println(s"  -> $h")
     }
   }
+  println("")
 
   // isBusinessDay
   println("Calling isBusinessDay")
@@ -70,6 +82,7 @@ object CalculatorClientExample extends App {
   println(s"Is (2017-02-26)(SUN) a business day? $isBus")
   isBus = Await.result(client.isBusinessDay(CalendarEnum.Nasdaq, "2017-02-27"))
   println(s"Is (2017-02-27)(MON) a business day? $isBus")
+  println("")
 
   // getNextBusinessDay
   println("Calling getNextBusinessDay")
@@ -82,6 +95,8 @@ object CalculatorClientExample extends App {
   Await.result(client.insertDay(CalendarEnum.Nasdaq, "2017-02-08", true))
   val nextBusDay = Await.result(client.getNextBusinessDay(CalendarEnum.Nasdaq, "2017-02-03"))
   println(s"Next business day: $nextBusDay")
+  println("")
+
 
   client.asInstanceOf[Calculator$FinagleClient].service.close()
 }

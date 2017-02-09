@@ -79,12 +79,17 @@ class DayService @Inject()(val ctx: FinagleMysqlContext[Literal]){
         .map(d => d.date)
   )
   def allDays = ctx.run(query[Day])
-  def everything = ctx.run(query[Day])
-  def deleteAll = ctx.run(query[Day].delete)
-  def countDays = {
-    val r = quote {
-      query[Day].map(d => d.calendar)
-    }
-    ctx.run(r.size)
+  def countDays = ctx.run(quote(query[Day]).size)
+  def deleteOne(calendar: Int, date: String) = {
+    ctx.run(
+      query[Day]
+        .filter( d =>
+          d.calendar == lift(calendar) &&
+          d.date == lift(parseDate(date))
+        )
+        .delete
+    )
+    this.countDays
   }
+  def deleteAll = ctx.run(query[Day].delete)
 }

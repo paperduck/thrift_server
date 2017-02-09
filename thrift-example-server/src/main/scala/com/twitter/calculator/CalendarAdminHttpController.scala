@@ -32,6 +32,16 @@ case class DeleteView(
 case class DeleteRequestView(
   days: List[Day]
 )
+@Mustache("deletewhere")
+case class DeleteWhereView(
+  days: List[Day]
+)
+@Mustache("deletewhereresult")
+case class DeleteWhereRequest(
+  @FormParam calendar: Int,
+  @FormParam date: String
+  //days: List [Day]
+)
 
 class CalendarAdminHttpController @Inject()(
   dayService: DayService
@@ -48,6 +58,16 @@ class CalendarAdminHttpController @Inject()(
     PersonView(Person(1, "Alice"))
   }
 
+  get("/insert") { request: Request =>
+    DayView(Await.result(dayService.allDays))
+  }
+
+  post("/insertresult") { request: DayInsertRequest =>
+    val dayList = List(Day(request.insertCalendar, parseDate(request.insertDate), request.insertIsHoliday))
+    Await.result(dayService.insertDays(dayList))
+    request
+  }
+
   get("/delete") { request: Request =>
     DeleteView(Await.result(dayService.allDays))
   }
@@ -57,13 +77,12 @@ class CalendarAdminHttpController @Inject()(
     DeleteRequestView(Await.result(dayService.allDays))
   }
 
-  get("/insert") { request: Request =>
-    DayView(Await.result(dayService.allDays))
+  get("/deletewhere") { request: Request =>
+    DeleteWhereView(Await.result(dayService.allDays))
   }
 
-  post("/insertresult") { request: DayInsertRequest =>
-    val dayList = List(Day(request.insertCalendar, parseDate(request.insertDate), request.insertIsHoliday))
-    Await.result(dayService.insertDays(dayList))
+  post("/deletewhereresult") { request: DeleteWhereRequest =>
+    Await.result(dayService.deleteOne(request.calendar, request.date))
     request
   }
 

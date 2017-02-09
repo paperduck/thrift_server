@@ -20,8 +20,6 @@ struct Day {
 
 service Calendar {
 
-    /*
-    */
     LocalDate getNextBusinessDay(
         1: CalendarEnum calendar
         2: LocalDate startDate
@@ -31,8 +29,6 @@ service Calendar {
         3: finatra_thrift_exceptions.NoClientIdError noClientIdError
     )
 
-    /*
-    */
     bool isTodayBusinessDay(
         1: CalendarEnum calendar
     ) throws (
@@ -41,8 +37,6 @@ service Calendar {
         3: finatra_thrift_exceptions.NoClientIdError noClientIdError
     )
 
-    /*
-    */
     bool isBusinessDay(
         1: CalendarEnum calendar
         2: LocalDate date
@@ -58,7 +52,7 @@ service Calendar {
     bool isHoliday(
         1: CalendarEnum calendar
         2: LocalDate date
-    ) throws  (
+    ) throws (
         1: finatra_thrift_exceptions.ServerError serverError,
         2: finatra_thrift_exceptions.UnknownClientIdError unknownClientIdError
         3: finatra_thrift_exceptions.NoClientIdError noClientIdError
@@ -90,9 +84,15 @@ service Calendar {
         3: finatra_thrift_exceptions.NoClientIdError noClientIdError
     )
 
-    /*
-    *
-    */
+    i64 deleteOne(
+      1: CalendarEnum calendar
+      2: LocalDate date
+    ) throws (
+        1: finatra_thrift_exceptions.ServerError  serverError,
+        2: finatra_thrift_exceptions.UnknownClientIdError unknownClientIdError
+        3: finatra_thrift_exceptions.NoClientIdError  noClientIdError
+    )
+
     i64 countDays(
     ) throws (
         1: finatra_thrift_exceptions.ServerError serverError,
@@ -100,9 +100,6 @@ service Calendar {
         3: finatra_thrift_exceptions.NoClientIdError noClientIdError
     )
 
-    /*
-    *
-    */
     i64 deleteAll(
     ) throws (
         1: finatra_thrift_exceptions.ServerError serverError,

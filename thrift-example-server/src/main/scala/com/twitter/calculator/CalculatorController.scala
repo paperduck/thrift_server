@@ -57,8 +57,6 @@ class CalculatorController @Inject()(dayService: DayService)
   def serializeDate(ld: LocalDate): String = ld.format(DateTimeFormatter.ISO_LOCAL_DATE)
   def parseDate(ldStr: String): LocalDate = LocalDate.parse(ldStr, DateTimeFormatter.ISO_LOCAL_DATE)
 
-
-
   // Since holidays are the inverse of business days, return the next non-holiday
   override val getNextBusinessDay = handle(GetNextBusinessDay) { args: GetNextBusinessDay.Args =>
     Future.value(getNextBusinessDayRecursive(args.calendar, args.startDate, 100))
@@ -130,6 +128,10 @@ class CalculatorController @Inject()(dayService: DayService)
 
   override val countDays = handle(CountDays) { args: CountDays.Args =>
     dayService.countDays
+  }
+
+  override val deleteOne = handle(DeleteOne) { args: DeleteOne.Args =>
+    dayService.deleteOne(CalendarEnum.fromThriftCalendarToDb(args.calendar), args.date)
   }
 
   override val deleteAll = handle(DeleteAll) { args: DeleteAll.Args =>
