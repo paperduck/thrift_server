@@ -42,6 +42,19 @@ case class DeleteWhereRequest(
   @FormParam date: String
   //days: List [Day]
 )
+@Mustache("isholiday")
+case class IsHolidayView(
+  days: List[Day]
+)
+@Mustache("isholidayresult")
+case class IsHolidayRequest(
+  @FormParam calendar: Int,
+  @FormParam date: String
+)
+@Mustache("isholidayresult")
+case class IsHolidayResult(
+  result: Boolean
+)
 
 class CalendarAdminHttpController @Inject()(
   dayService: DayService
@@ -84,6 +97,15 @@ class CalendarAdminHttpController @Inject()(
   post("/deletewhereresult") { request: DeleteWhereRequest =>
     Await.result(dayService.deleteOne(request.calendar, request.date))
     request
+  }
+
+  get("/isholiday") { request: Request =>
+    IsHolidayView(Await.result(dayService.allDays))
+  }
+
+  get("/isholidayresult") { request: IsHolidayRequest =>
+    val result = Await.result(dayService.isHoliday(request.calendar, request.date))(0)
+    IsHolidayResult(result=result)
   }
 
   /**

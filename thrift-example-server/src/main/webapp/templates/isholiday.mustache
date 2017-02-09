@@ -1,0 +1,25 @@
+<html>
+<body>
+    <a href="index.html">back</a><br/><br/>
+
+    <form action="isholidayresult" method="get">
+        <fieldset>
+            <legend><b>Check if this date is a holiday</b></legend>
+                Calendar:<br/>
+                <input type="text" name="calendar"/><br/>
+                Date:<br/>
+                <input type="text" name="date"/><br/>
+                <input type="submit" value="Check"/>
+        </fieldset>
+    </form><br/>
+
+    <table border=1>
+        <tr><td colspan=3>Days:</td></tr>
+        <tr><td>calendar</td><td>date</td><td>isHoliday</td></tr>
+        {{#days}}
+        <tr><td>{{calendar}}</td><td>{{date}}</td><td>{{isHoliday}}</td></tr>
+        {{/days}}
+    </table>
+
+</body>
+</html>
