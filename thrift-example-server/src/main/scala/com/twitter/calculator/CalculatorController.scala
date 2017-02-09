@@ -59,7 +59,7 @@ class CalculatorController @Inject()(dayService: DayService)
 
   // Since holidays are the inverse of business days, return the next non-holiday
   override val getNextBusinessDay = handle(GetNextBusinessDay) { args: GetNextBusinessDay.Args =>
-    Future.value(getNextBusinessDayRecursive(args.calendar, args.startDate, 100))
+    Future.value(getNextBusinessDayRecursive(args.calendar, serializeDate(parseDate(args.startDate).plusDays(1)), 100))
   }
 
   def getNextBusinessDayRecursive (calendar: thriftscala.CalendarEnum, dateKey: String, limit: Int): String = {
@@ -103,7 +103,7 @@ class CalculatorController @Inject()(dayService: DayService)
   // Return true if the day is marked as holiday in db OR is a weekend
   override val isHoliday = handle(IsHoliday) { args: IsHoliday.Args =>
     val queryResult = dayService.isHoliday(CalendarEnum.fromThriftCalendarToDb(args.calendar), args.date)
-    val isWeekend = List(DayOfWeek.SATURDAY, DayOfWeek.SUNDAY).contains(parseDate(args.date).getDayOfWeek())
+    val isWeekend = List(DayOfWeek.SATURDAY, DayOfWeek.SUNDAY).contains(parseDate(args.date).getDayOfWeek)
     val result = queryResult.map {r => {
       isWeekend || (if (r.nonEmpty) r.head else false)
     }}

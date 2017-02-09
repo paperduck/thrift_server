@@ -1,0 +1,19 @@
+
+<html>
+<head></head>
+<body>
+
+    <a href="index.html">back</a><br/><br/>
+
+    {{resultDay}}<br/><br/>
+
+    <table border=1>
+        <tr><td colspan=3>Days:</td></tr>
+        <tr><td>calendar</td><td>date</td><td>isHoliday</td></tr>
+        {{#days}}
+        <tr><td>{{calendar}}</td><td>{{date}}</td><td>{{isHoliday}}</td></tr>
+        {{/days}}
+    </table>
+
+</body>
+</html>

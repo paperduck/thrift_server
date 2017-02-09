@@ -1,6 +1,6 @@
 package com.twitter.calculator
 
-import java.time.LocalDate
+import java.time.{DayOfWeek, LocalDate}
 import java.time.format.DateTimeFormatter
 import javax.inject.Inject
 
@@ -9,7 +9,8 @@ import com.twitter.finagle.http.Request
 import com.twitter.finatra.http.Controller
 import com.twitter.finatra.response.Mustache
 import com.twitter.finatra.request.{FormParam, QueryParam}
-import com.twitter.util.Await
+import com.twitter.util.{Await, Future}
+
 
 @Mustache("person")
 case class PersonView(person: Person)
@@ -53,7 +54,23 @@ case class IsHolidayRequest(
 )
 @Mustache("isholidayresult")
 case class IsHolidayResult(
-  result: Boolean
+  isHolResult: Boolean,
+  days: List[Day]
+)
+// @Mustache("isbusinessday")
+@Mustache("getnextbusinessday")
+case class GetNextBusinessDayView(
+  days: List[Day]
+)
+@Mustache("getnextbusinessdayresult")
+case class GetNextBusinessDayRequest(
+  @FormParam calendar: Int,
+  @FormParam startDate: String
+)
+@Mustache("getnextbusinessdayresult")
+case class GetNextBusinessDayResponse(
+  resultDay: String,
+  days: List[Day]
 )
 
 class CalendarAdminHttpController @Inject()(
@@ -104,8 +121,57 @@ class CalendarAdminHttpController @Inject()(
   }
 
   get("/isholidayresult") { request: IsHolidayRequest =>
-    val result = Await.result(dayService.isHoliday(request.calendar, request.date))(0)
-    IsHolidayResult(result=result)
+    var markedAsHoliday = Await.result(dayService.isHoliday(request.calendar, request.date))
+    if (markedAsHoliday.isEmpty) markedAsHoliday = List(false) // default value
+    val isWeekend = List(DayOfWeek.SATURDAY, DayOfWeek.SUNDAY).contains(parseDate(request.date).getDayOfWeek)
+    val isHol = markedAsHoliday.head || isWeekend
+    val dayList = Await.result(dayService.allDays)
+    IsHolidayResult(isHolResult = isHol, days = dayList)
+
+    /*
+    for {
+      res <- dayService.isHoliday(request.calendar, request.date )  // <- is like flat map
+      dayList <- dayService.allDays
+    } yield {
+      IsHolidayResult(res(0), dayList)
+    }
+
+    // transform Seq[Future[_]] to Future[Seq[_]]
+    // The futures have to all be the same type.
+    val x = Future.collect(Seq(
+      dayService.isHoliday(request.calendar, request.date),
+      dayService.allDays
+    ))
+    x.map(x=> IsHolidayResult(x(0)(0), x(1)))
+    */
+  }
+
+  get("/getnextbusinessday") { request: Request =>
+    GetNextBusinessDayView(Await.result(dayService.allDays))
+  }
+
+  /* copied from CalculatorController */
+  get("/getnextbusinessdayresult") { request: GetNextBusinessDayRequest =>
+      val resultDay = getNextBusinessDayRecursive(request.calendar, serializeDate(parseDate(request.startDate).plusDays(1)), 100)
+      val dayList = Await.result(dayService.allDays)
+      GetNextBusinessDayResponse(resultDay, dayList)
+  }
+
+  /* copied from CalculatorController */
+  def getNextBusinessDayRecursive (calendar: Int, dateKey: String, limit: Int): String = {
+    if (limit == 0) throw new Exception // reached limit
+    // dayService.isHoliday might return empty list
+    var markedAsHoliday = Await.result(dayService.isHoliday(calendar, dateKey))
+    if (markedAsHoliday.isEmpty) {
+      markedAsHoliday = List(false)
+    }
+    // dayService doesn't take weekend into consideration
+    val isHolOrWeekend = markedAsHoliday.head || List(DayOfWeek.SATURDAY, DayOfWeek.SUNDAY).contains(parseDate(dateKey).getDayOfWeek())
+    if (!isHolOrWeekend){
+      dateKey
+    }else{
+      getNextBusinessDayRecursive(calendar, serializeDate(parseDate(dateKey).plusDays(1)), limit - 1)
+    }
   }
 
   /**
