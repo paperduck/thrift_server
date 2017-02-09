@@ -17,14 +17,19 @@ case class PersonView(person: Person)
 case class DayView(
   days: List[Day]
 )
-@Mustache("insertResult")
+@Mustache("insertresult")
 case class DayInsertRequest(
   @FormParam insertCalendar: Int,
   @FormParam insertDate: String,
   @FormParam insertIsHoliday: Boolean
+  //days: List[Day]
 )
 @Mustache("delete")
 case class DeleteView(
+  days: List[Day]
+)
+@Mustache("deleteresult")
+case class DeleteRequestView(
   days: List[Day]
 )
 
@@ -43,21 +48,22 @@ class CalendarAdminHttpController @Inject()(
     PersonView(Person(1, "Alice"))
   }
 
+  get("/delete") { request: Request =>
+    DeleteView(Await.result(dayService.allDays))
+  }
+
+  get("/deleteresult") { request: Request =>
+    Await.result(dayService.deleteAll)
+    DeleteRequestView(Await.result(dayService.allDays))
+  }
+
   get("/insert") { request: Request =>
     DayView(Await.result(dayService.allDays))
   }
 
-  post("/insertResult") { request: DayInsertRequest =>
+  post("/insertresult") { request: DayInsertRequest =>
     val dayList = List(Day(request.insertCalendar, parseDate(request.insertDate), request.insertIsHoliday))
     Await.result(dayService.insertDays(dayList))
-    DayView(Await.result(dayService.allDays))
-  }
-
-  get("/delete") { request: Request =>
-    DayView(Await.result(dayService.allDays))
-  }
-
-  get("/deleteResult") { request: Request =>
     request
   }
 
@@ -71,11 +77,12 @@ class CalendarAdminHttpController @Inject()(
   * a "catch-all" and routes should be defined in order of most-specific to least-specific.
     *
   * @see http://twitter.github.io/finatra/user-guide/build-new-http-server/controller.html#controllers-and-routing
+  *      https://twitter.github.io/finatra/user-guide/http/controllers.html#controllers-and-routing
   * @see http://twitter.github.io/finatra/user-guide/files/
   */
   get("/:*") { request: Request =>
     response.ok.fileOrIndex(
       filePath = request.params("*"),
-      indexPath = "calendar.html")
+      indexPath = "index.html")
   }
 }
