@@ -9,7 +9,8 @@ class CalculatorServerStartupTest extends FeatureTest {
 
   val server = new EmbeddedHttpServer(
     twitterServer = new CalculatorServer,
-    stage = Stage.PRODUCTION) with ThriftClient
+    stage = Stage.PRODUCTION,
+    disableTestLogging = true) with ThriftClient
 
   "server" should {
     "startup" in {

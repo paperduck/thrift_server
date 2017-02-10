@@ -83,7 +83,7 @@
   <logger name="com.twitter.logging.ScribeHandler" level="warn"/>
   <logger name="com.twitter.zookeeper.client.internal" level="warn"/>
 
-  <root level="${log_level:-INFO}">
+  <root level="${log.level:-INFO}">
     <appender-ref ref="ASYNC-SERVICE"/>
     <appender-ref ref="STDOUT" />
   </root>

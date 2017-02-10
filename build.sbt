@@ -28,7 +28,8 @@ lazy val baseSettings = Seq(
     Resolver.sonatypeRepo("releases"),
     "Twitter Maven" at "https://maven.twttr.com"
   ),
-  fork in run := true
+  fork in run := true,
+  logBuffered in Test := false //recommended by scalatest http://www.scalatest.org/user_guide/using_scalatest_with_sbt
 )
 
 lazy val root = (project in file(".")).
