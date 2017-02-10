@@ -35,18 +35,18 @@ lazy val root = (project in file(".")).
   settings(
     name := "thrift-server",
     organization := "com.twitter",
-    moduleName := "thrift-example-root",
+    moduleName := "calendar", //"thrift-example-root",
     run := {
-      (run in `thriftExampleServer` in Compile).evaluated
+      (run in `calendarServerMain` in Compile).evaluated
     }
   ).
-  aggregate(thriftExampleServer)
+  aggregate(calendarServerMain)
 
-lazy val thriftExampleServer = (project in file("thrift-example-server")).
+lazy val calendarServerMain = (project in file("calendar-server-main")).
   settings(baseSettings).
   settings(
-    name := "thrift-example-server",
-    moduleName := "thrift-example-server",
+    name := "calendar-server-main",
+    moduleName := "calendar-server-main",
     libraryDependencies ++= Seq(
       "com.twitter" %% "finatra-thrift" % versions.finatra,
       "com.twitter" %% "finatra-http" % versions.finatra,
@@ -70,13 +70,13 @@ lazy val thriftExampleServer = (project in file("thrift-example-server")).
     ),
     unmanagedResourceDirectories in Compile += baseDirectory.value / "src" / "main" / "webapp" //for static web resources
   ).
-  dependsOn(thriftExampleIdl)
+  dependsOn(calendarServerIdl)
 
-lazy val thriftExampleIdl = (project in file("thrift-example-idl")).
+lazy val calendarServerIdl = (project in file("calendar-server-idl")).
     settings(baseSettings).
     settings(
-      name := "thrift-example-idl",
-      moduleName := "thrift-example-idl",
+      name := "calendar-server-idl",
+      moduleName := "calendar-server-idl",
       scroogeThriftDependencies in Compile := Seq(
         "finatra-thrift_2.11"
       ),
