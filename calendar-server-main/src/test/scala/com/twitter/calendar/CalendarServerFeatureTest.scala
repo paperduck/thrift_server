@@ -137,7 +137,9 @@ class CalendarServerFeatureTest extends FeatureTest {
       Await.result(client.insertDay(thriftscala.CalendarEnum.Japannext, "2017-02-06", true))
       Await.result(client.insertDay(thriftscala.CalendarEnum.Japannext, "2017-02-07", false))
       val initialCount = Await.result(client.countDays())
-      Await.result(client.deleteOne(thriftscala.CalendarEnum.Japannext, "2017-02-06"))
+      val delResult = Await.result(client.deleteOne(thriftscala.CalendarEnum.Japannext, "2017-02-06"))
+      delResult shouldBe a [java.lang.Long]
+      //delResult should be (1) // MariaDB DELETE returns number of deleted rows
       val secondCount = Await.result(client.countDays())
       initialCount should equal(secondCount + 1)
     }
