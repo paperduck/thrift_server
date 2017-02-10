@@ -24,8 +24,9 @@ class CalendarServerFeatureTest extends FeatureTest {
 
   "InsertDay" should {
     "increase table's record count by one" in {
+      Await.result(client.deleteAll())
       val initialCount = Await.result(client.countDays())
-      val insertResult = client.insertDay(thriftscala.CalendarEnum.Jpx, "2017-01-01", false)
+      client.insertDay(thriftscala.CalendarEnum.Jpx, "2017-01-01", false)
       val secondCount = Await.result(client.countDays())
       secondCount should equal(initialCount + 1)
     }
@@ -34,6 +35,7 @@ class CalendarServerFeatureTest extends FeatureTest {
   // database PRIMARY KEY constraint on (calendar, date)
   "Return value of failed insert" should {
     "be mysql.ServerError" in {
+      Await.result(client.deleteAll())
       val dayList = List(
         Day(CalendarEnum.fromThriftCalendarToDb(thriftscala.CalendarEnum.Jpx), parseDate("2017-03-02"), false),
         Day(CalendarEnum.fromThriftCalendarToDb(thriftscala.CalendarEnum.Jpx), parseDate("2017-03-02"), true)
@@ -106,6 +108,7 @@ class CalendarServerFeatureTest extends FeatureTest {
       initialCount should equal(secondCount + 1)
     }
   }
+
 
   "whitelist clients" should {
     "be allowed" in {

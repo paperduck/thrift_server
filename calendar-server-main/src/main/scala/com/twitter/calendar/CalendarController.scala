@@ -56,24 +56,29 @@ class CalendarController @Inject()(dayService: DayService)
 
   // Since holidays are the inverse of business days, return the next non-holiday
   override val getNextBusinessDay = handle(GetNextBusinessDay) { args: GetNextBusinessDay.Args =>
-    Future.value(getNextBusinessDayRecursive(args.calendar, serializeDate(parseDate(args.startDate).plusDays(1)), 100))
+    getNextBusinessDayRecursive(
+      CalendarEnum.fromThriftCalendarToDb(args.calendar),
+      Future.value(serializeDate(parseDate(args.startDate).plusDays(1))),
+      100
+    )
   }
 
-  def getNextBusinessDayRecursive (calendar: thriftscala.CalendarEnum, dateKey: String, limit: Int): String = {
+  def getNextBusinessDayRecursive (calendar: Int, dateKey: Future[String], limit: Int):Future[String] = {
     if (limit == 0) throw new Exception // reached limit
-    var isHol = Await.result(dayService.isHoliday(CalendarEnum.fromThriftCalendarToDb(calendar), dateKey))
-    if (isHol.isEmpty) {
-      info("isHol.isEmpty == true")
-      throw new Exception
-    }
-    info(s"isHol(0) before weekend processing: ${isHol(0)}")
-    // dayService doesn't take weekend into consideration
-    val isHolOrWeekend = isHol(0) || List(DayOfWeek.SATURDAY, DayOfWeek.SUNDAY).contains(parseDate(dateKey).getDayOfWeek())
-    info(s"isHol(0) after weekend processing: ${isHol(0)}")
-    if (!isHolOrWeekend){
-      dateKey
-    }else{
-      getNextBusinessDayRecursive(calendar, serializeDate(parseDate(dateKey).plusDays(1)), limit - 1)
+    // dayService.isHoliday might return empty list
+    dateKey.flatMap { d =>
+      val markedAsHoliday = dayService.isHoliday(calendar, d).map { x =>
+        if (x.isEmpty) List(false) else x
+      }
+      // dayService doesn't take weekend into consideration, so do it here.
+      markedAsHoliday.flatMap({ m =>
+        val isHol = m.head || List(DayOfWeek.SATURDAY, DayOfWeek.SUNDAY).contains(parseDate(d).getDayOfWeek)
+        if (!isHol) {
+          Future.value(d)
+        } else {
+          getNextBusinessDayRecursive(calendar, Future.value(serializeDate(parseDate(d).plusDays(1))), limit - 1)
+        }
+      })
     }
   }
 
@@ -82,42 +87,39 @@ class CalendarController @Inject()(dayService: DayService)
     val today = LocalDate.now(ZoneOffset.UTC)
     val queryResult = dayService.isBusinessDay(CalendarEnum.fromThriftCalendarToDb(args.calendar), serializeDate(today))
     val isWeekend = List(DayOfWeek.SATURDAY, DayOfWeek.SUNDAY).contains(today.getDayOfWeek())
-    val result = queryResult.map {r => {
+    queryResult.map {r => {
       !isWeekend && (if (r.nonEmpty) r.head else false) // empty set should throw exception
     }}
-    result
   }
 
   override val isBusinessDay = handle(IsBusinessDay) { args: IsBusinessDay.Args =>
     val queryResult = dayService.isBusinessDay(CalendarEnum.fromThriftCalendarToDb(args.calendar), args.date)
     val isWeekend = List(DayOfWeek.SATURDAY, DayOfWeek.SUNDAY).contains(parseDate(args.date).getDayOfWeek())
-    val result = queryResult.map {r => {
+    queryResult.map {r =>
       !isWeekend && (if (r.nonEmpty) r.head else true)
-    }}
-    result
+    }
   }
 
   // Return true if the day is marked as holiday in db OR is a weekend
   override val isHoliday = handle(IsHoliday) { args: IsHoliday.Args =>
     val queryResult = dayService.isHoliday(CalendarEnum.fromThriftCalendarToDb(args.calendar), args.date)
     val isWeekend = List(DayOfWeek.SATURDAY, DayOfWeek.SUNDAY).contains(parseDate(args.date).getDayOfWeek)
-    val result = queryResult.map {r => {
+    queryResult.map {r =>
       isWeekend || (if (r.nonEmpty) r.head else false)
-    }}
-    result
+    }
+
   }
 
   override val insertDay = handle(InsertDay) { args: InsertDay.Args =>
     var success = true
     val newDay = Day(calendar=CalendarEnum.fromThriftCalendarToDb(args.calendar), date=parseDate(args.date),
       isHoliday=args.isHoliday)
-    val queryResult = dayService.insertDays(List(newDay))
+    dayService.insertDays(List(newDay))
     Future.value(success)
-    //queryResult.map({x => info("Finished"); x})
   }
 
-  override val getHolidays = handle(GetHolidays) { args: GetHolidays.Args =>
-    val queryResult = dayService.getHolidays(CalendarEnum.fromThriftCalendarToDb(args.calendar), args.fromDate, args.toDate)
+  override val getMarkedHolidays = handle(GetMarkedHolidays) { args: GetMarkedHolidays.Args =>
+    val queryResult = dayService.getMarkedHolidays(CalendarEnum.fromThriftCalendarToDb(args.calendar), args.fromDate, args.toDate)
     //queryResult.map {r => r(0)}  // extract from Future
     // date comes from db as date; convert to string
     queryResult.map{row => row.map(elem => serializeDate(elem))}

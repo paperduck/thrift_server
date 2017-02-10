@@ -74,7 +74,7 @@ service Calendar {
     /**
     * Get holidays of a given calendar between two dates.
     */
-    list<string> GetHolidays(
+    list<string> GetMarkedHolidays(
         1: CalendarEnum calendar
         2: string fromDate
         3: string toDate

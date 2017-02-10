@@ -68,7 +68,7 @@ class DayService @Inject()(val ctx: FinagleMysqlContext[Literal]){
         .map(d => d.isHoliday)
     )
   def insertDays(days: List[Day]) = ctx.run(liftQuery(days).foreach(d => query[Day].insert(d)))
-  def getHolidays(calendar: Int, fromDate: String, toDate: String) = ctx.run(
+  def getMarkedHolidays(calendar: Int, fromDate: String, toDate: String) = ctx.run(
       query[Day]
         .filter(d =>
           d.calendar == lift(calendar) &&
