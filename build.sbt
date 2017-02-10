@@ -33,14 +33,14 @@ lazy val baseSettings = Seq(
 
 lazy val root = (project in file(".")).
   settings(
-    name := "thrift-server",
+    name := "calendar",
     organization := "com.twitter",
     moduleName := "calendar", //"thrift-example-root",
     run := {
       (run in `calendarServerMain` in Compile).evaluated
     }
   ).
-  aggregate(calendarServerMain)
+  aggregate(calendarServerIdl, calendarServerMain)
 
 lazy val calendarServerMain = (project in file("calendar-server-main")).
   settings(baseSettings).
