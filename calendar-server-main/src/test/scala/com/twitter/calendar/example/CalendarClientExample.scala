@@ -69,7 +69,7 @@ object CalendarClientExample extends App {
     println(s"No holidays with those constraints.")
   }
   else {
-    println(s"  The holidays from $fromDate to $toDate are:")
+    println(s"  The 'marked holidays' (excluding weekends) from $fromDate to $toDate are:")
     for (h <- holidayList) {
       println(s"  -> $h")
     }

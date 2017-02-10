@@ -7,7 +7,7 @@ import java.util.Date
 import com.twitter.calendar.thriftscala.Calendar
 import com.twitter.calendar.thriftscala.Calendar._
 import com.twitter.finatra.thrift.Controller
-import com.twitter.util.{Await, Future}
+import com.twitter.util.{Future}
 import com.twitter.calendar.db._
 
 import javax.inject.{Inject, Singleton}
@@ -85,11 +85,8 @@ class CalendarController @Inject()(dayService: DayService)
   override val isTodayBusinessDay = handle(IsTodayBusinessDay) { args: IsTodayBusinessDay.Args =>
     //Date today = Calendar.getInstance().getTime()
     val today = LocalDate.now(ZoneOffset.UTC)
-    val queryResult = dayService.isBusinessDay(CalendarEnum.fromThriftCalendarToDb(args.calendar), serializeDate(today))
-    val isWeekend = List(DayOfWeek.SATURDAY, DayOfWeek.SUNDAY).contains(today.getDayOfWeek())
-    queryResult.map {r => {
-      !isWeekend && (if (r.nonEmpty) r.head else false) // empty set should throw exception
-    }}
+    val isBDay = dayService.isBusinessDay(CalendarEnum.fromThriftCalendarToDb(args.calendar), serializeDate(today))
+    isBDay.map{b => if (b.isEmpty) false else b.head} // should throw exception
   }
 
   override val isBusinessDay = handle(IsBusinessDay) { args: IsBusinessDay.Args =>

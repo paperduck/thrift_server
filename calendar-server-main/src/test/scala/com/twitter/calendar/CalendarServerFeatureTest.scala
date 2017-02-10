@@ -1,7 +1,7 @@
 package com.twitter.calendar
 
 import java.time.format.DateTimeFormatter
-import java.time.{LocalDate, ZoneOffset}
+import java.time.{DayOfWeek, LocalDate, ZoneOffset}
 
 import com.twitter.calendar.db.{Day, DayService}
 import com.twitter.calendar.thriftscala.Calendar
@@ -26,56 +26,83 @@ class CalendarServerFeatureTest extends FeatureTest {
     "increase table's record count by one" in {
       Await.result(client.deleteAll())
       val initialCount = Await.result(client.countDays())
-      client.insertDay(thriftscala.CalendarEnum.Jpx, "2017-01-01", false)
+      initialCount shouldBe a [java.lang.Long]
+      val insertResult = Await.result(client.insertDay(thriftscala.CalendarEnum.Jpx, "2017-01-01", false))
+      insertResult shouldBe a [java.lang.Boolean]
       val secondCount = Await.result(client.countDays())
       secondCount should equal(initialCount + 1)
     }
   }
 
   // database PRIMARY KEY constraint on (calendar, date)
-  "Return value of failed insert" should {
-    "be mysql.ServerError" in {
+  "Failed database insert" should {
+    "throw mysql.ServerError when existing (calendar, date) exists." in {
       Await.result(client.deleteAll())
       val dayList = List(
+        // Try adding two days with same 'calendar' and 'date', but different 'isHoliday'
         Day(CalendarEnum.fromThriftCalendarToDb(thriftscala.CalendarEnum.Jpx), parseDate("2017-03-02"), false),
         Day(CalendarEnum.fromThriftCalendarToDb(thriftscala.CalendarEnum.Jpx), parseDate("2017-03-02"), true)
       )
       val service = injector.instance[DayService]
-      an[mysql.ServerError] should be thrownBy service.insertDays(dayList).value
+      an [mysql.ServerError] should be thrownBy service.insertDays(dayList).value
     }
   }
 
   "IsHoliday" should {
     "be true on the weekend, true on weekday marked as holiday, and false on non-holiday weekday" in{
       Await.result(client.deleteAll())
+
       Await.result(client.insertDay(thriftscala.CalendarEnum.Jpx, "2017-01-01", false))
       var result = Await.result(client.isHoliday(thriftscala.CalendarEnum.Jpx, "2017-01-01"))
+      result shouldBe a [java.lang.Boolean]
       result should equal(true)
 
       Await.result(client.deleteAll())
       Await.result(client.insertDay(thriftscala.CalendarEnum.Nasdaq, "2017-01-02", true))
       result = Await.result(client.isHoliday(thriftscala.CalendarEnum.Nasdaq, "2017-01-02"))
+      result shouldBe a [java.lang.Boolean]
       result should equal(true)
 
       Await.result(client.deleteAll())
       Await.result(client.insertDay(thriftscala.CalendarEnum.Nasdaq, "2017-01-03", false))
       result = Await.result(client.isHoliday(thriftscala.CalendarEnum.Nasdaq, "2017-01-03"))
+      result shouldBe a [java.lang.Boolean]
       result should equal(false)
     }
   }
 
-  "IsBusinessDay" should {
+  "isHoliday called with invalid date string" should {
+    "throw the correct Exception" in {
+      val query = client.isHoliday(thriftscala.CalendarEnum.Jpx, "abcdef")
+      an[com.twitter.finatra.thrift.thriftscala.ServerError] should be thrownBy query.value
+    }
+  }
+
+  "IsTodayBusinessDay" should {
     "be false if it's the weekend, and false if marked as holiday" in {
-      val today = serializeDate(LocalDate.now(ZoneOffset.UTC))
+      val today = LocalDate.now(ZoneOffset.UTC)
+      val isWeekend = List(DayOfWeek.SATURDAY, DayOfWeek.SUNDAY).contains(today.getDayOfWeek())
 
+      // empty database
       Await.result(client.deleteAll())
-      Await.result(client.insertDay(thriftscala.CalendarEnum.Jpx, today, false))
       var result = Await.result(client.isTodayBusinessDay(thriftscala.CalendarEnum.Jpx))
-      result should equal(true)
-
+      result shouldBe a [java.lang.Boolean]
+      result should be (isWeekend)
+      // with a day marked as non-holiday
       Await.result(client.deleteAll())
-      Await.result(client.insertDay(thriftscala.CalendarEnum.Jpx, today, true))
+      Await.result(client.insertDay(thriftscala.CalendarEnum.Jpx, serializeDate(today), false))
       result = Await.result(client.isTodayBusinessDay(thriftscala.CalendarEnum.Jpx))
+      result shouldBe a [java.lang.Boolean]
+      if (isWeekend) {
+        result should be (false)
+      }else{
+        result should be  (true)
+      }
+      // with a day marked as a holiday
+      Await.result(client.deleteAll())
+      Await.result(client.insertDay(thriftscala.CalendarEnum.Jpx, serializeDate(today), true))
+      result = Await.result(client.isTodayBusinessDay(thriftscala.CalendarEnum.Jpx))
+      result shouldBe a [java.lang.Boolean]
       result should equal(false)
     }
   }
@@ -91,6 +118,13 @@ class CalendarServerFeatureTest extends FeatureTest {
       Await.result(client.insertDay(thriftscala.CalendarEnum.Jpx, "2017-02-08", true))
       val result = Await.result(client.getNextBusinessDay(thriftscala.CalendarEnum.Jpx, "2017-02-03"))
       result should equal ("2017-02-07")
+    }
+  }
+
+  "GetNextBusinessDay with invalid date string" should {
+    "throw the correct error when given a date string that can't be parssed" in {
+      val result = client.getNextBusinessDay(thriftscala.CalendarEnum.Nasdaq, "abcde")
+      an [com.twitter.finatra.thrift.thriftscala.ServerError] should be thrownBy result.value
     }
   }
 
