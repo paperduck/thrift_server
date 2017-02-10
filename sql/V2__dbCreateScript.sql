@@ -23,12 +23,11 @@ DROP TABLE IF EXISTS `day`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
 CREATE TABLE `day` (
-  `pk` int(10) unsigned NOT NULL AUTO_INCREMENT,
   `calendar` int(10) unsigned NOT NULL,
   `date` date NOT NULL,
   `isHoliday` tinyint(1) NOT NULL,
-  PRIMARY KEY (`pk`)
-) ENGINE=InnoDB AUTO_INCREMENT=55 DEFAULT CHARSET=utf8;
+  PRIMARY KEY (`calendar`,`date`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -37,7 +36,7 @@ CREATE TABLE `day` (
 
 LOCK TABLES `day` WRITE;
 /*!40000 ALTER TABLE `day` DISABLE KEYS */;
-INSERT INTO `day` VALUES (54,0,'2017-01-01',1);
+INSERT INTO `day` VALUES (0,'2017-01-01',1);
 /*!40000 ALTER TABLE `day` ENABLE KEYS */;
 UNLOCK TABLES;
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
@@ -50,4 +49,4 @@ UNLOCK TABLES;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2017-02-06 18:45:26
+-- Dump completed on 2017-02-10 12:39:09

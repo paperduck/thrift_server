@@ -9,7 +9,7 @@ import com.twitter.finagle.http.Request
 import com.twitter.finatra.http.Controller
 import com.twitter.finatra.response.Mustache
 import com.twitter.finatra.request.{FormParam, QueryParam}
-import com.twitter.util.{Await, Future}
+import com.twitter.util.Future
 
 
 @Mustache("person")
@@ -23,7 +23,10 @@ case class DayInsertRequest(
   @FormParam insertCalendar: Int,
   @FormParam insertDate: String,
   @FormParam insertIsHoliday: Boolean
-  //days: List[Day]
+)
+@Mustache("insertresult")
+case class InsertResponse(
+  days: List[Day]
 )
 @Mustache("delete")
 case class DeleteView(
@@ -43,6 +46,10 @@ case class DeleteWhereRequest(
   @FormParam date: String
   //days: List [Day]
 )
+@Mustache("deletewhereresult")
+case class DeleteWhereResponse(
+  days: List[Day]
+)
 @Mustache("isholiday")
 case class IsHolidayView(
   days: List[Day]
@@ -57,7 +64,6 @@ case class IsHolidayResult(
   isHolResult: Boolean,
   days: List[Day]
 )
-// @Mustache("isbusinessday")
 @Mustache("getnextbusinessday")
 case class GetNextBusinessDayView(
   days: List[Day]
@@ -80,113 +86,84 @@ class CalendarAdminHttpController @Inject()(
   def serializeDate(ld: LocalDate): String = ld.format(DateTimeFormatter.ISO_LOCAL_DATE)
   def parseDate(ldStr: String): LocalDate = LocalDate.parse(ldStr, DateTimeFormatter.ISO_LOCAL_DATE)
 
-  get("/ping") { request: Request =>
-    "pong"
-  }
-
-  get("/person") { request: Request =>
-    PersonView(Person(1, "Alice"))
-  }
-
   get("/insert") { request: Request =>
-    DayView(Await.result(dayService.allDays))
+    val dayList = dayService.allDays
+    dayList.map{x => response.ok.body(DayView(x))}
   }
 
   post("/insertresult") { request: DayInsertRequest =>
-    val dayList = List(Day(request.insertCalendar, parseDate(request.insertDate), request.insertIsHoliday))
-    Await.result(dayService.insertDays(dayList))
-    request
+    val newDays = List(Day(request.insertCalendar, parseDate(request.insertDate), request.insertIsHoliday))
+    dayService.insertDays(newDays)
+    dayService.allDays.map{dayList => InsertResponse(dayList)}
   }
 
   get("/delete") { request: Request =>
-    DeleteView(Await.result(dayService.allDays))
+    val dayList = dayService.allDays
+    dayList.map{x => response.ok.body(DeleteView(x))}
   }
 
   get("/deleteresult") { request: Request =>
-    Await.result(dayService.deleteAll)
-    DeleteRequestView(Await.result(dayService.allDays))
+    dayService.deleteAll
+    dayService.allDays.map{x => DeleteRequestView(x)}
   }
 
   get("/deletewhere") { request: Request =>
-    DeleteWhereView(Await.result(dayService.allDays))
+    dayService.allDays.map{x => DeleteWhereView(x)}
   }
 
   post("/deletewhereresult") { request: DeleteWhereRequest =>
-    Await.result(dayService.deleteOne(request.calendar, request.date))
-    request
+    dayService.deleteOne(request.calendar, request.date)
+    dayService.allDays.map{x => DeleteWhereResponse(x)}
   }
 
   get("/isholiday") { request: Request =>
-    IsHolidayView(Await.result(dayService.allDays))
+    dayService.allDays.map{x => IsHolidayView(x)}
   }
 
   get("/isholidayresult") { request: IsHolidayRequest =>
-    var markedAsHoliday = Await.result(dayService.isHoliday(request.calendar, request.date))
-    if (markedAsHoliday.isEmpty) markedAsHoliday = List(false) // default value
+    val markedAsHoliday = dayService.isHoliday(request.calendar, request.date)
+    val isMarked = markedAsHoliday.map{x:List[Boolean] => if (x.isEmpty) List(false) else x} // default value
     val isWeekend = List(DayOfWeek.SATURDAY, DayOfWeek.SUNDAY).contains(parseDate(request.date).getDayOfWeek)
-    val isHol = markedAsHoliday.head || isWeekend
-    val dayList = Await.result(dayService.allDays)
-    IsHolidayResult(isHolResult = isHol, days = dayList)
-
-    /*
-    for {
-      res <- dayService.isHoliday(request.calendar, request.date )  // <- is like flat map
-      dayList <- dayService.allDays
-    } yield {
-      IsHolidayResult(res(0), dayList)
+    isMarked.flatMap{m =>
+      dayService.allDays.map{dayList => IsHolidayResult(isHolResult = m.head || isWeekend, days = dayList)}
     }
-
-    // transform Seq[Future[_]] to Future[Seq[_]]
-    // The futures have to all be the same type.
-    val x = Future.collect(Seq(
-      dayService.isHoliday(request.calendar, request.date),
-      dayService.allDays
-    ))
-    x.map(x=> IsHolidayResult(x(0)(0), x(1)))
-    */
   }
 
   get("/getnextbusinessday") { request: Request =>
-    GetNextBusinessDayView(Await.result(dayService.allDays))
+    dayService.allDays.map{x => GetNextBusinessDayView(x)}
   }
 
-  /* copied from CalculatorController */
   get("/getnextbusinessdayresult") { request: GetNextBusinessDayRequest =>
-      val resultDay = getNextBusinessDayRecursive(request.calendar, serializeDate(parseDate(request.startDate).plusDays(1)), 100)
-      val dayList = Await.result(dayService.allDays)
-      GetNextBusinessDayResponse(resultDay, dayList)
+      val resultDay:Future[String] = getNextBusinessDayRecursive(
+        request.calendar,
+        Future.value(serializeDate(parseDate(request.startDate).plusDays(1))),
+        100
+      )
+      dayService.allDays.flatMap{ dayList =>
+        resultDay.map{ d =>
+          GetNextBusinessDayResponse(d, dayList)
+      }}
   }
 
-  /* copied from CalculatorController */
-  def getNextBusinessDayRecursive (calendar: Int, dateKey: String, limit: Int): String = {
+  def getNextBusinessDayRecursive (calendar: Int, dateKey: Future[String], limit: Int):Future[String] = {
     if (limit == 0) throw new Exception // reached limit
     // dayService.isHoliday might return empty list
-    var markedAsHoliday = Await.result(dayService.isHoliday(calendar, dateKey))
-    if (markedAsHoliday.isEmpty) {
-      markedAsHoliday = List(false)
-    }
-    // dayService doesn't take weekend into consideration
-    val isHolOrWeekend = markedAsHoliday.head || List(DayOfWeek.SATURDAY, DayOfWeek.SUNDAY).contains(parseDate(dateKey).getDayOfWeek())
-    if (!isHolOrWeekend){
-      dateKey
-    }else{
-      getNextBusinessDayRecursive(calendar, serializeDate(parseDate(dateKey).plusDays(1)), limit - 1)
+    dateKey.flatMap { d =>
+      val markedAsHoliday = dayService.isHoliday(calendar, d).map { x =>
+        if (x.isEmpty) List(false) else x
+      }
+      // dayService doesn't take weekend into consideration, so do it here.
+      markedAsHoliday.flatMap({ m =>
+        val isHol = m.head || List(DayOfWeek.SATURDAY, DayOfWeek.SUNDAY).contains(parseDate(d).getDayOfWeek)
+        if (!isHol) {
+          Future.value(d)
+        } else {
+          getNextBusinessDayRecursive(calendar, Future.value(serializeDate(parseDate(d).plusDays(1))), limit - 1)
+        }
+      })
     }
   }
 
-  /**
-  * An example of how to serve files or an index. If the path param of "*" matches the name/path
-  * of a file that can be resolved by the [[com.twitter.finatra.http.routing.FileResolver]]
-  * then the file will be returned. Otherwise the file at 'indexPath' (in this case 'index.html')
-  * will be returned. This is useful for building "single-page" web applications.
-  *
-  * Routes a are matched in the order they are defined, thus this route SHOULD be LAST as it is
-  * a "catch-all" and routes should be defined in order of most-specific to least-specific.
-    *
-  * @see http://twitter.github.io/finatra/user-guide/build-new-http-server/controller.html#controllers-and-routing
-  *      https://twitter.github.io/finatra/user-guide/http/controllers.html#controllers-and-routing
-  * @see http://twitter.github.io/finatra/user-guide/files/
-  */
   get("/:*") { request: Request =>
     response.ok.fileOrIndex(
       filePath = request.params("*"),

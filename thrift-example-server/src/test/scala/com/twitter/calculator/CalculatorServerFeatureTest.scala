@@ -3,8 +3,10 @@ package com.twitter.calculator
 import java.time.format.DateTimeFormatter
 import java.time.{LocalDate, ZoneOffset}
 
+import com.twitter.calculator.db.{Day, DayService}
 import com.twitter.calculator.thriftscala.Calendar
 import com.twitter.finagle.http.Status
+import com.twitter.finagle.mysql
 import com.twitter.finatra.http.EmbeddedHttpServer
 import com.twitter.finatra.thrift.ThriftClient
 import com.twitter.finatra.thrift.thriftscala.{NoClientIdError, UnknownClientIdError}
@@ -23,9 +25,21 @@ class CalculatorServerFeatureTest extends FeatureTest {
   "InsertDay" should {
     "increase table's record count by one" in {
       val initialCount = Await.result(client.countDays())
-      Await.result(client.insertDay(thriftscala.CalendarEnum.Jpx,"2017-01-01",false))
+      val insertResult = client.insertDay(thriftscala.CalendarEnum.Jpx, "2017-01-01", false)
       val secondCount = Await.result(client.countDays())
       secondCount should equal(initialCount + 1)
+    }
+  }
+
+  // database PRIMARY KEY constraint on (calendar, date)
+  "Return value of failed insert" should {
+    "be mysql.ServerError" in {
+      val dayList = List(
+        Day(CalendarEnum.fromThriftCalendarToDb(thriftscala.CalendarEnum.Jpx), parseDate("2017-03-02"), false),
+        Day(CalendarEnum.fromThriftCalendarToDb(thriftscala.CalendarEnum.Jpx), parseDate("2017-03-02"), true)
+      )
+      val service = injector.instance[DayService]
+      an[mysql.ServerError] should be thrownBy service.insertDays(dayList).value
     }
   }
 
@@ -116,14 +130,8 @@ class CalculatorServerFeatureTest extends FeatureTest {
   }
 
   "http route" should {
-    "/ping" in {
-      server.httpGet("/ping", andExpect = Status.Ok, withBody = "pong")
-    }
     "/" in {
       server.httpGet("/", andExpect = Status.Ok)
-    }
-    "/person" in {
-      server.httpGet("/person", andExpect = Status.Ok)
     }
   }
 }
