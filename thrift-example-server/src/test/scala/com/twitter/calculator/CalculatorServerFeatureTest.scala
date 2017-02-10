@@ -9,41 +9,46 @@ import com.twitter.finatra.http.EmbeddedHttpServer
 import com.twitter.finatra.thrift.ThriftClient
 import com.twitter.finatra.thrift.thriftscala.{NoClientIdError, UnknownClientIdError}
 import com.twitter.inject.server.FeatureTest
-import com.twitter.util.{Await, Future}
+import com.twitter.util.Future
+import org.scalatest.BeforeAndAfterEach
 
-class CalculatorServerFeatureTest extends FeatureTest {
+class CalculatorServerFeatureTest extends FeatureTest with BeforeAndAfterEach {
 
-  override val server = new EmbeddedHttpServer(new CalculatorServer) with ThriftClient
+  override val server = new EmbeddedHttpServer(new CalculatorServer, disableTestLogging = true) with ThriftClient
 
-  val client = server.thriftClient[Calendar[Future]](clientId = "client123")
+  lazy val client = server.thriftClient[Calendar[Future]](clientId = "client123")
 
   def serializeDate(ld: LocalDate): String = ld.format(DateTimeFormatter.ISO_LOCAL_DATE)
   def parseDate(ldStr: String): LocalDate = LocalDate.parse(ldStr, DateTimeFormatter.ISO_LOCAL_DATE)
 
+  override def beforeEach(): Unit = {
+    super.beforeEach()
+    client.deleteAll().value
+  }
+
   "InsertDay" should {
     "increase table's record count by one" in {
-      val initialCount = Await.result(client.countDays())
-      Await.result(client.insertDay(thriftscala.CalendarEnum.Jpx,"2017-01-01",false))
-      val secondCount = Await.result(client.countDays())
+      val initialCount = client.countDays().value
+      client.insertDay(thriftscala.CalendarEnum.Jpx,"2017-01-01",false).value
+      val secondCount = client.countDays().value
       secondCount should equal(initialCount + 1)
     }
   }
 
   "IsHoliday" should {
     "be true on the weekend, true on weekday marked as holiday, and false on non-holiday weekday" in{
-      Await.result(client.deleteAll())
-      Await.result(client.insertDay(thriftscala.CalendarEnum.Jpx, "2017-01-01", false))
-      var result = Await.result(client.isHoliday(thriftscala.CalendarEnum.Jpx, "2017-01-01"))
+      client.insertDay(thriftscala.CalendarEnum.Jpx, "2017-01-01", false).value
+      var result = client.isHoliday(thriftscala.CalendarEnum.Jpx, "2017-01-01").value
       result should equal(true)
 
-      Await.result(client.deleteAll())
-      Await.result(client.insertDay(thriftscala.CalendarEnum.Nasdaq, "2017-01-02", true))
-      result = Await.result(client.isHoliday(thriftscala.CalendarEnum.Nasdaq, "2017-01-02"))
+      client.deleteAll().value
+      client.insertDay(thriftscala.CalendarEnum.Nasdaq, "2017-01-02", true).value
+      result = client.isHoliday(thriftscala.CalendarEnum.Nasdaq, "2017-01-02").value
       result should equal(true)
 
-      Await.result(client.deleteAll())
-      Await.result(client.insertDay(thriftscala.CalendarEnum.Nasdaq, "2017-01-03", false))
-      result = Await.result(client.isHoliday(thriftscala.CalendarEnum.Nasdaq, "2017-01-03"))
+      client.deleteAll().value
+      client.insertDay(thriftscala.CalendarEnum.Nasdaq, "2017-01-03", false).value
+      result = client.isHoliday(thriftscala.CalendarEnum.Nasdaq, "2017-01-03").value
       result should equal(false)
     }
   }
@@ -52,43 +57,55 @@ class CalculatorServerFeatureTest extends FeatureTest {
     "be false if it's the weekend, and false if marked as holiday" in {
       val today = serializeDate(LocalDate.now(ZoneOffset.UTC))
 
-      Await.result(client.deleteAll())
-      Await.result(client.insertDay(thriftscala.CalendarEnum.Jpx, today, false))
-      var result = Await.result(client.isTodayBusinessDay(thriftscala.CalendarEnum.Jpx))
+      client.insertDay(thriftscala.CalendarEnum.Jpx, today, false).value
+      var result = client.isTodayBusinessDay(thriftscala.CalendarEnum.Jpx).value
       result should equal(true)
 
-      Await.result(client.deleteAll())
-      Await.result(client.insertDay(thriftscala.CalendarEnum.Jpx, today, true))
-      result = Await.result(client.isTodayBusinessDay(thriftscala.CalendarEnum.Jpx))
+      client.deleteAll().value
+      client.insertDay(thriftscala.CalendarEnum.Jpx, today, true).value
+      result = client.isTodayBusinessDay(thriftscala.CalendarEnum.Jpx).value
+      result should equal(false)
+    }
+    "true when no day" in {
+      val today = "2017-02-10"
+      val result = client.isTodayBusinessDay(thriftscala.CalendarEnum.Jpx).value
+      result should equal(true)
+    }
+    "false when day exists and is holiday" in {
+      val today = "2017-02-10"
+      client.insertDay(thriftscala.CalendarEnum.Jpx, today, true).value
+      val result = client.isTodayBusinessDay(thriftscala.CalendarEnum.Jpx).value
       result should equal(false)
     }
   }
 
   "GetNextBusinessDay" should {
     "return the correct business day" in {
-      Await.result(client.deleteAll())
-      Await.result(client.insertDay(thriftscala.CalendarEnum.Jpx, "2017-02-03", true))
-      Await.result(client.insertDay(thriftscala.CalendarEnum.Jpx, "2017-02-04", false))
-      Await.result(client.insertDay(thriftscala.CalendarEnum.Jpx, "2017-02-05", true))
-      Await.result(client.insertDay(thriftscala.CalendarEnum.Jpx, "2017-02-06", true))
-      Await.result(client.insertDay(thriftscala.CalendarEnum.Jpx, "2017-02-07", false))
-      Await.result(client.insertDay(thriftscala.CalendarEnum.Jpx, "2017-02-08", true))
-      val result = Await.result(client.getNextBusinessDay(thriftscala.CalendarEnum.Jpx, "2017-02-03"))
+      client.insertDay(thriftscala.CalendarEnum.Jpx, "2017-02-03", true).value
+      client.insertDay(thriftscala.CalendarEnum.Jpx, "2017-02-04", false).value
+      client.insertDay(thriftscala.CalendarEnum.Jpx, "2017-02-05", true).value
+      client.insertDay(thriftscala.CalendarEnum.Jpx, "2017-02-06", true).value
+      client.insertDay(thriftscala.CalendarEnum.Jpx, "2017-02-07", false).value
+      client.insertDay(thriftscala.CalendarEnum.Jpx, "2017-02-08", true).value
+      val result = client.getNextBusinessDay(thriftscala.CalendarEnum.Jpx, "2017-02-03").value
       result should equal ("2017-02-07")
+    }
+
+    "skip weekend" in {
+
     }
   }
 
   "DeleteOne" should {
     "reduce the count by one" in {
-      Await.result(client.deleteAll())
-      Await.result(client.insertDay(thriftscala.CalendarEnum.Japannext, "2017-02-03", true))
-      Await.result(client.insertDay(thriftscala.CalendarEnum.Japannext, "2017-02-04", false))
-      Await.result(client.insertDay(thriftscala.CalendarEnum.Japannext, "2017-02-05", true))
-      Await.result(client.insertDay(thriftscala.CalendarEnum.Japannext, "2017-02-06", true))
-      Await.result(client.insertDay(thriftscala.CalendarEnum.Japannext, "2017-02-07", false))
-      val initialCount = Await.result(client.countDays())
-      Await.result(client.deleteOne(thriftscala.CalendarEnum.Japannext, "2017-02-06"))
-      val secondCount = Await.result(client.countDays())
+      client.insertDay(thriftscala.CalendarEnum.Japannext, "2017-02-03", true).value
+      client.insertDay(thriftscala.CalendarEnum.Japannext, "2017-02-04", false).value
+      client.insertDay(thriftscala.CalendarEnum.Japannext, "2017-02-05", true).value
+      client.insertDay(thriftscala.CalendarEnum.Japannext, "2017-02-06", true).value
+      client.insertDay(thriftscala.CalendarEnum.Japannext, "2017-02-07", false).value
+      val initialCount = client.countDays().value
+      client.deleteOne(thriftscala.CalendarEnum.Japannext, "2017-02-06").value
+      val secondCount = client.countDays().value
       initialCount should equal(secondCount + 1)
     }
   }
