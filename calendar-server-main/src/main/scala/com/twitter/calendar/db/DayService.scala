@@ -8,7 +8,7 @@ import java.time.format.DateTimeFormatter
 import com.twitter.calendar.{CalendarEnum, thriftscala}
 import io.getquill.context.Context
 import io.getquill.context.sql.SqlContext
-import io.getquill.{FinagleMysqlContext, Literal}
+import io.getquill._
 
 /*
 //encoding logic which can be mixed in with different database contexts
@@ -39,15 +39,19 @@ class DayService @Inject()(val ctx: FinagleMysqlContext[Literal]){
     def < = quote((arg: LocalDate) => infix"$ldt < $arg".as[Boolean])
     def <= = quote((arg: LocalDate) => infix"$ldt <= $arg".as[Boolean])
     def == = quote((arg: LocalDate) => infix"$ldt = $arg".as[Boolean])
-    //def toEpoch = quote(infix"DATEDIFF($ldt,'1970-01-01')".as[Long])
   }
 
-  def now = quote(infix"now()".as[LocalDate])
+  /* This raw SQL infix query gets a compile-time error.
+   * Submitted an issue on GitHub:
+   * https://github.com/getquill/quill/issues/708
+   */
+  //def rowCount = quote(infix"""SELECT ROW_COUNT()""".as[Query[Long]])
   def serializeDate(ld: LocalDate): String = ld.format(DateTimeFormatter.ISO_LOCAL_DATE)
   def parseDate(ldStr: String): LocalDate = LocalDate.parse(ldStr, DateTimeFormatter.ISO_LOCAL_DATE)
   implicit val encodeCalendarEnum = MappedEncoding[CalendarEnum, Int](_.int)
   implicit val decodeCalendarEnum = MappedEncoding[Int, CalendarEnum](CalendarEnum.fromInt)
 
+  /*
   // Doesn't take weekends into consideration.
   def isBusinessDay(calendar: Int, date: String) = ctx.run(
     query[Day]
@@ -55,11 +59,12 @@ class DayService @Inject()(val ctx: FinagleMysqlContext[Literal]){
         d.calendar == lift(calendar) &&
           d.date == lift(parseDate(date))
       )
-      .map(d => !d.isHoliday)
+      .map(d => !d.isMarkedHoliday)
   )
+  */
 
   // Doesn't take weekends into consideration.
-  def isHoliday(calendar: Int, date: String) = ctx.run(
+  def isMarkedHoliday(calendar: Int, date: String) = ctx.run(
       query[Day]
         .filter(d =>
           d.calendar == lift(calendar) &&

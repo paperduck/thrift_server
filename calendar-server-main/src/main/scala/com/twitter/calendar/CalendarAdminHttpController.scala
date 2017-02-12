@@ -1,6 +1,6 @@
 package com.twitter.calendar
 
-import java.time.{DayOfWeek, LocalDate}
+import java.time.{DayOfWeek, LocalDate, ZoneOffset}
 import java.time.format.DateTimeFormatter
 import javax.inject.Inject
 
@@ -26,7 +26,8 @@ case class DayInsertRequest(
 )
 @Mustache("insertresult")
 case class InsertResponse(
-  days: List[Day]
+  days: List[Day],
+  errorMsg: String
 )
 @Mustache("delete")
 case class DeleteView(
@@ -48,7 +49,8 @@ case class DeleteWhereRequest(
 )
 @Mustache("deletewhereresult")
 case class DeleteWhereResponse(
-  days: List[Day]
+  days: List[Day],
+  delResult: Long
 )
 @Mustache("isholiday")
 case class IsHolidayView(
@@ -62,6 +64,19 @@ case class IsHolidayRequest(
 @Mustache("isholidayresult")
 case class IsHolidayResult(
   isHolResult: Boolean,
+  days: List[Day]
+)
+@Mustache("istodaybusinessday")
+case class IsTodayBusinessDayView(
+  days: List[Day]
+)
+@Mustache("istodaybusinessdayresult")
+case class IsTodayBusinessDayRequest(
+   @FormParam calendar: Int
+ )
+@Mustache("istodaybusinessdayresult")
+case class IsTodayBusinessDayResponse(
+  result: Boolean,
   days: List[Day]
 )
 @Mustache("getnextbusinessday")
@@ -93,8 +108,19 @@ class CalendarAdminHttpController @Inject()(
 
   post("/insertresult") { request: DayInsertRequest =>
     val newDays = List(Day(request.insertCalendar, parseDate(request.insertDate), request.insertIsHoliday))
-    dayService.insertDays(newDays)
-    dayService.allDays.map{dayList => InsertResponse(dayList)}
+    var errorMsg = ""
+      // Use flatMap to ensure that the insert happens before retrieving the list of days.
+        dayService.insertDays(newDays).rescue{
+          case dbError: com.twitter.finagle.mysql.ServerError =>
+            println(s"ERROR: Does that day already exist in the database?")
+            errorMsg = "Database error while inserting. Does the day already exist in the database?"
+            dayService.allDays.map { dayList => InsertResponse(dayList, errorMsg) }
+          case _: Throwable =>
+            println("ERROR while inserting.")
+            dayService.allDays.map { dayList => InsertResponse(dayList, errorMsg) }
+        }.flatMap { x =>
+          dayService.allDays.map { dayList => InsertResponse(dayList, errorMsg) }
+        }
   }
 
   get("/delete") { request: Request =>
@@ -103,8 +129,11 @@ class CalendarAdminHttpController @Inject()(
   }
 
   get("/deleteresult") { request: Request =>
-    dayService.deleteAll
-    dayService.allDays.map{x => DeleteRequestView(x)}
+    // Use flatMap to ensure the delete happens before getting the list.
+    Future().flatMap { x =>
+      dayService.deleteAll
+      dayService.allDays.map { x => DeleteRequestView(x) }
+    }
   }
 
   get("/deletewhere") { request: Request =>
@@ -112,8 +141,10 @@ class CalendarAdminHttpController @Inject()(
   }
 
   post("/deletewhereresult") { request: DeleteWhereRequest =>
-    dayService.deleteOne(request.calendar, request.date)
-    dayService.allDays.map{x => DeleteWhereResponse(x)}
+    // Use flatMap to ensure the delete happens before getting the list.
+      dayService.deleteOne(request.calendar, request.date).flatMap { delResult =>
+        dayService.allDays.map { x => DeleteWhereResponse(x, delResult) }
+      }
   }
 
   get("/isholiday") { request: Request =>
@@ -121,11 +152,30 @@ class CalendarAdminHttpController @Inject()(
   }
 
   get("/isholidayresult") { request: IsHolidayRequest =>
-    val markedAsHoliday = dayService.isHoliday(request.calendar, request.date)
+    val markedAsHoliday = dayService.isMarkedHoliday(request.calendar, request.date)
     val isMarked = markedAsHoliday.map{x:List[Boolean] => if (x.isEmpty) List(false) else x} // default value
     val isWeekend = List(DayOfWeek.SATURDAY, DayOfWeek.SUNDAY).contains(parseDate(request.date).getDayOfWeek)
     isMarked.flatMap{m =>
       dayService.allDays.map{dayList => IsHolidayResult(isHolResult = m.head || isWeekend, days = dayList)}
+    }
+  }
+
+  get("/istodaybusinessday") { request: Request =>
+    dayService.allDays.map{x => IsTodayBusinessDayView(x)}
+  }
+
+  get("/istodaybusinessdayresult") { request: IsTodayBusinessDayRequest =>
+    val today = serializeDate(LocalDate.now(ZoneOffset.UTC))
+    val markedAsHoliday = {
+      dayService.isMarkedHoliday(request.calendar, today)
+        .map{x:List[Boolean] =>
+          // If the holiday is not in the database, then it's "not marked as holiday" by default.
+          if (x.isEmpty) List(false) else x
+        }
+    }
+    val isWeekend = List(DayOfWeek.SATURDAY, DayOfWeek.SUNDAY).contains(parseDate(today).getDayOfWeek)
+    markedAsHoliday.flatMap{m =>
+      dayService.allDays.map{dayList => IsTodayBusinessDayResponse(result = !m.head && !isWeekend, days = dayList)}
     }
   }
 
@@ -147,13 +197,14 @@ class CalendarAdminHttpController @Inject()(
 
   def getNextBusinessDayRecursive (calendar: Int, dateKey: Future[String], limit: Int):Future[String] = {
     if (limit == 0) throw new Exception // reached limit
-    // dayService.isHoliday might return empty list
+    // dayService.isMarkedHoliday might return empty list
     dateKey.flatMap { d =>
-      val markedAsHoliday = dayService.isHoliday(calendar, d).map { x =>
+      val markedAsHoliday = dayService.isMarkedHoliday(calendar, d).map { x =>
         if (x.isEmpty) List(false) else x
       }
       // dayService doesn't take weekend into consideration, so do it here.
       markedAsHoliday.flatMap({ m =>
+        // If the date is marked as Holiday OR the weekend, then it's not a business day.
         val isHol = m.head || List(DayOfWeek.SATURDAY, DayOfWeek.SUNDAY).contains(parseDate(d).getDayOfWeek)
         if (!isHol) {
           Future.value(d)

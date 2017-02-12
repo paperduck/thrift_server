@@ -2,14 +2,12 @@
 <body>
     <a href="index.html">home</a><br/><br/>
 
-    <form action="isholidayresult" method="get">
+    <form action="istodaybusinessdayresult" method="get">
         <fieldset>
-            <legend><b>Check if this date is a holiday</b></legend>
-                Returns true if the date is a holiday in the database <b>OR</b> is the weekend.<br/><br/>
-                Calendar ID: (example: 2)<br/>
-                <input type="text" name="calendar"/><br/>
-                Date:<br/>
-                <input type="text" name="date"/><br/>
+            <legend><b>Check if today is a business day</b></legend>
+                Returns true if today is not marked as a holiday in the database <b>AND</b> is not the weekend.<br/><br/>
+                Calendar ID: (example: 0)<br/>
+                <input type="text" name="calendar"/><br/><br/>
                 <input type="submit" value="Check"/>
         </fieldset>
     </form><br/>

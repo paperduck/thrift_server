@@ -82,12 +82,12 @@ class CalendarServerFeatureTest extends FeatureTest {
     "be false if it's the weekend, and false if marked as holiday" in {
       val today = LocalDate.now(ZoneOffset.UTC)
       val isWeekend = List(DayOfWeek.SATURDAY, DayOfWeek.SUNDAY).contains(today.getDayOfWeek())
-
-      // empty database
+      println(s"isWeekend = $isWeekend")
       Await.result(client.deleteAll())
       var result = Await.result(client.isTodayBusinessDay(thriftscala.CalendarEnum.Jpx))
       result shouldBe a [java.lang.Boolean]
-      result should be (isWeekend)
+      // Since the database is empty, the result is just whether or not it's the weekend.
+      result should be (!isWeekend)
       // with a day marked as non-holiday
       Await.result(client.deleteAll())
       Await.result(client.insertDay(thriftscala.CalendarEnum.Jpx, serializeDate(today), false))
@@ -96,7 +96,7 @@ class CalendarServerFeatureTest extends FeatureTest {
       if (isWeekend) {
         result should be (false)
       }else{
-        result should be  (true)
+        result should be (true)
       }
       // with a day marked as a holiday
       Await.result(client.deleteAll())
@@ -139,7 +139,12 @@ class CalendarServerFeatureTest extends FeatureTest {
       val initialCount = Await.result(client.countDays())
       val delResult = Await.result(client.deleteOne(thriftscala.CalendarEnum.Japannext, "2017-02-06"))
       delResult shouldBe a [java.lang.Long]
-      //delResult should be (1) // MariaDB DELETE returns number of deleted rows
+      /* MariaDB DELETE returns number of deleted rows.
+       * According to MariaDB documentation, I can call ROW_COUNT() to get
+       * that number.
+       */
+      //delResult should be (1)
+      //Await.result(client.rowCount) should be (1)
       val secondCount = Await.result(client.countDays())
       initialCount should equal(secondCount + 1)
     }

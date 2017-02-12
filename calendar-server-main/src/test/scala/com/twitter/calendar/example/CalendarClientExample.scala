@@ -1,6 +1,6 @@
 package com.twitter.calendar.example
 
-import java.time.LocalDate
+import java.time.{LocalDate, ZoneOffset}
 import java.time.format.DateTimeFormatter
 
 import com.twitter.calendar.thriftscala.{Calendar, Calendar$FinagleClient, CalendarEnum}
@@ -88,6 +88,12 @@ object CalendarClientExample extends App {
   Await.result(client.insertDay(CalendarEnum.Jpx, weekdayHoliday, false))
   println(s" Inserted:  JPX | $weekdayHoliday  | false")
   println(s"  Is ($weekdayHoliday) a business day? $isBus")
+  println("")
+
+  // isTodayBusinessDay
+  println("Calling isTodayBusinessDay with UTC time")
+  val isTodayBDay = Await.result(client.isTodayBusinessDay(CalendarEnum.Jpx))
+  println(s"  $isTodayBDay")
   println("")
 
   // getNextBusinessDay

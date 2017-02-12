@@ -65,9 +65,9 @@ class CalendarController @Inject()(dayService: DayService)
 
   def getNextBusinessDayRecursive (calendar: Int, dateKey: Future[String], limit: Int):Future[String] = {
     if (limit == 0) throw new Exception // reached limit
-    // dayService.isHoliday might return empty list
+    // dayService.isMarkedHoliday might return empty list
     dateKey.flatMap { d =>
-      val markedAsHoliday = dayService.isHoliday(calendar, d).map { x =>
+      val markedAsHoliday = dayService.isMarkedHoliday(calendar, d).map { x =>
         if (x.isEmpty) List(false) else x
       }
       // dayService doesn't take weekend into consideration, so do it here.
@@ -85,21 +85,44 @@ class CalendarController @Inject()(dayService: DayService)
   override val isTodayBusinessDay = handle(IsTodayBusinessDay) { args: IsTodayBusinessDay.Args =>
     //Date today = Calendar.getInstance().getTime()
     val today = LocalDate.now(ZoneOffset.UTC)
-    val isBDay = dayService.isBusinessDay(CalendarEnum.fromThriftCalendarToDb(args.calendar), serializeDate(today))
-    isBDay.map{b => if (b.isEmpty) false else b.head} // should throw exception
+    val isWeekend = List(DayOfWeek.SATURDAY, DayOfWeek.SUNDAY).contains(today.getDayOfWeek())
+    val markedHoliday = dayService.isMarkedHoliday(CalendarEnum.fromThriftCalendarToDb(args.calendar), serializeDate(today))
+    markedHoliday.map{mark =>
+      if (mark.nonEmpty){
+        if (mark.head) {
+          // if it's marked as a holiday, then it's definitely not a business day
+          false
+        }else{
+          // If it's not marked as a holiday, check if it's the weekend
+          !isWeekend
+        }
+      }else{
+        !isWeekend
+      }
+    }
   }
 
   override val isBusinessDay = handle(IsBusinessDay) { args: IsBusinessDay.Args =>
-    val queryResult = dayService.isBusinessDay(CalendarEnum.fromThriftCalendarToDb(args.calendar), args.date)
+    val markedHoliday = dayService.isMarkedHoliday(CalendarEnum.fromThriftCalendarToDb(args.calendar), args.date)
     val isWeekend = List(DayOfWeek.SATURDAY, DayOfWeek.SUNDAY).contains(parseDate(args.date).getDayOfWeek())
-    queryResult.map {r =>
-      !isWeekend && (if (r.nonEmpty) r.head else true)
+    markedHoliday.map {mark =>
+      if (mark.nonEmpty){
+        if (mark.head) {
+          // if it's marked as a holiday, then it's definitely not a business day
+          false
+        }else{
+          // If it's not marked as a holiday, check if it's the weekend
+          !isWeekend
+        }
+      }else{
+        !isWeekend
+      }
     }
   }
 
   // Return true if the day is marked as holiday in db OR is a weekend
   override val isHoliday = handle(IsHoliday) { args: IsHoliday.Args =>
-    val queryResult = dayService.isHoliday(CalendarEnum.fromThriftCalendarToDb(args.calendar), args.date)
+    val queryResult = dayService.isMarkedHoliday(CalendarEnum.fromThriftCalendarToDb(args.calendar), args.date)
     val isWeekend = List(DayOfWeek.SATURDAY, DayOfWeek.SUNDAY).contains(parseDate(args.date).getDayOfWeek)
     queryResult.map {r =>
       isWeekend || (if (r.nonEmpty) r.head else false)

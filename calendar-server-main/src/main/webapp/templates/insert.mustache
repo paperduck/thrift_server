@@ -2,7 +2,20 @@
 <head></head>
 <body>
 
-<a href="index.html">back</a>
+<a href="index.html">home</a><br/><br/>
+
+<form action="insertresult" method="post">
+    <fieldset>
+        <legend><b>Insert Day</b></legend>
+            Calendar ID: (example: 1)<br/>
+            <input type="text" name="insertCalendar"/><br/>
+            Date: (example: 2017-02-14)<br/>
+            <input type="text" name="insertDate"/><br/>
+            Is Holiday: (example: true)<br/>
+            <input type="text" name="insertIsHoliday"/><br/>
+            <input type="submit" name="insert">
+    </fieldset>
+</form><br/>
 
 <table border=1>
     <tr><td colspan=3>Days:</td></tr>
@@ -11,19 +24,6 @@
     <tr><td>{{calendar}}</td><td>{{date}}</td><td>{{isHoliday}}</td></tr>
     {{/days}}
 </table>
-
-<form action="insertresult" method="post">
-    <fieldset>
-        <legend><b>Insert Day</b></legend>
-            Calendar:<br/>
-            <input type="text" name="insertCalendar"/><br/>
-            Date:<br/>
-            <input type="text" name="insertDate"/><br/>
-            Is Holiday:<br/>
-            <input type="text" name="insertIsHoliday"/><br/>
-            <input type="submit" name="insert">
-    </fieldset>
-</form>
 
 </body>
 </html>
